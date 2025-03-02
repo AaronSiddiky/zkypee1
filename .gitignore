@@ -30,4 +30,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts 
+next-env.d.ts
+
+# Add this line to your existing .gitignore
+.env.local 
