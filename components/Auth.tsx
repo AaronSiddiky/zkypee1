@@ -4,7 +4,11 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion } from 'framer-motion';
 
-export default function Auth() {
+interface AuthProps {
+  onSuccess?: () => void;
+}
+
+export default function Auth({ onSuccess }: AuthProps) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -34,6 +38,9 @@ export default function Auth() {
         });
         
         if (error) throw error;
+        
+        // Call the success callback if provided
+        if (onSuccess) onSuccess();
       }
     } catch (error: any) {
       setMessage(error.message || 'An error occurred');
