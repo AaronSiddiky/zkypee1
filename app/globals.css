@@ -4,10 +4,48 @@
 
 :root {
   --foreground-rgb: 0, 0, 0;
-  --background-rgb: 240, 240, 240;
+  --background-rgb: 248, 248, 248;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Animation for the background grid */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.grid-background {
+  animation: fadeIn 1s ease-in-out;
+}
+
+.custom-cursor {
+  cursor: none;
+}
+
+.custom-cursor a, 
+.custom-cursor button {
+  cursor: none;
 } 
