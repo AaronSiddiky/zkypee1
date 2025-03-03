@@ -49,7 +49,7 @@ export default function HomePage() {
             <AnimatePresence>
               {showZkypee && (
                 <motion.div
-                  className="text-blue-500"
+                  className="text-blue-500 text-4xl sm:text-5xl md:text-6xl"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
