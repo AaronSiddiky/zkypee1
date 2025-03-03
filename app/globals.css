@@ -11,6 +11,7 @@ body {
   color: rgb(var(--foreground-rgb));
   background: rgb(var(--background-rgb));
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Custom scrollbar */
@@ -33,8 +34,12 @@ body {
 
 /* Animation for the background grid */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .grid-background {
@@ -45,7 +50,36 @@ body {
   cursor: none;
 }
 
-.custom-cursor a, 
+.custom-cursor a,
 .custom-cursor button {
   cursor: none;
-} 
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  html,
+  body {
+    font-size: 14px;
+  }
+
+  input,
+  button,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Improve touch targets */
+  button,
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Fix for iOS 100vh issue */
+@supports (-webkit-touch-callout: none) {
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+}

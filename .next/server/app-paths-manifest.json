@@ -1,3 +1,9 @@
 {
-  "/page": "app/page.js"
+  "/_not-found/page": "app/_not-found/page.js",
+  "/dial/page": "app/dial/page.js",
+  "/page": "app/page.js",
+  "/signup/page": "app/signup/page.js",
+  "/api/twilio/token/route": "app/api/twilio/token/route.js",
+  "/features/page": "app/features/page.js",
+  "/transfer/page": "app/transfer/page.js"
 }
