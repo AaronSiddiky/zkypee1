@@ -191,14 +191,15 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       if (callSuccess) {
         console.log("Call initiated successfully");
         setStatusMessage("Call connected");
+        // Note: isCalling state will be managed by the useEffect that watches isConnected
       } else {
         console.log("Call failed to initiate");
+        setIsCalling(false);
         if (error) {
           setStatusMessage(error);
         } else {
           setStatusMessage("Failed to connect call. Please try again.");
         }
-        setIsCalling(false);
       }
     } catch (callError: any) {
       console.error("Error making call:", callError);
@@ -212,6 +213,8 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     hangUp();
     setIsCalling(false);
     setStatusMessage("Call ended");
+
+    // The isCalling state will also be updated by the useEffect that watches isConnected
   };
 
   const handleTestConnection = async () => {
@@ -258,12 +261,15 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   useEffect(() => {
     if (error) {
       setCallStatus(`Error: ${error}`);
+      setIsCalling(false);
     } else if (isConnected) {
       setCallStatus("Call in progress");
+      setIsCalling(true);
     } else if (isConnecting) {
       setCallStatus("Connecting...");
     } else {
       setCallStatus(null);
+      setIsCalling(false);
     }
   }, [isConnecting, isConnected, error]);
 
@@ -432,7 +438,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
           </motion.button>
 
           <motion.button
-            onClick={handleCall}
+            onClick={isCalling ? handleHangUp : handleCall}
             className={`h-14 w-14 rounded-full flex items-center justify-center transition-colors ${
               isCalling
                 ? "bg-red-500 hover:bg-red-600"
@@ -442,14 +448,35 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
                 ? "bg-yellow-500 hover:bg-yellow-600" // Yellow when device not ready
                 : "bg-blue-500 hover:bg-blue-600 animate-pulse" // Add pulse animation to make it more obvious
             }`}
-            whileHover={{ scale: phoneNumber.trim() === "" ? 1 : 1.05 }}
-            whileTap={{ scale: phoneNumber.trim() === "" ? 1 : 0.95 }}
-            disabled={phoneNumber.trim() === ""}
+            whileHover={{
+              scale: phoneNumber.trim() === "" && !isCalling ? 1 : 1.05,
+            }}
+            whileTap={{
+              scale: phoneNumber.trim() === "" && !isCalling ? 1 : 0.95,
+            }}
+            disabled={phoneNumber.trim() === "" && !isCalling}
           >
-            {isCalling ? (
+            {isConnecting ? (
               // Show loading spinner when connecting
               <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+            ) : isCalling ? (
+              // Show hang up icon when in a call
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-7 w-7 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             ) : (
+              // Show call icon when not in a call
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-7 w-7 text-white"
