@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneContent from "../components/PhoneContent";
+import CountdownTimer from "../components/CountdownTimer";
 
 export default function HomePage() {
   const [showZkypee, setShowZkypee] = useState(false);
@@ -20,20 +21,6 @@ export default function HomePage() {
     <div className="min-h-screen">
       <main className="max-w-7xl mx-auto px-4 sm:px-8 py-6 sm:py-12 flex flex-col lg:flex-row items-center">
         <div className="w-full lg:w-1/2 mb-8 lg:mb-0 text-center lg:text-left">
-          <AnimatePresence>
-            {showZkypee && (
-              <motion.p
-                className="text-gray-600 mb-2 text-sm sm:text-base"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                Waitlist users get free 25 minutes. Zkypee launches on March 5,
-                2025.
-              </motion.p>
-            )}
-          </AnimatePresence>
-
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">
             <motion.div
               initial={{ opacity: 1 }}
@@ -62,6 +49,21 @@ export default function HomePage() {
           <p className="text-lg sm:text-xl mb-6 sm:mb-8">
             Transfer your Skype Credits and enjoy cheaper rates today
           </p>
+
+          {/* Countdown Timer */}
+          <AnimatePresence>
+            {showZkypee && (
+              <motion.div
+                className="mb-6 w-full flex justify-center lg:justify-start"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                <CountdownTimer />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center lg:justify-start">
             <Link
               href="/signup"
