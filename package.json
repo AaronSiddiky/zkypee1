@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "@twilio/voice-sdk": "^2.12.3",
     "framer-motion": "^12.4.7",
     "next": "^14.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+    "twilio": "^5.4.5"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
