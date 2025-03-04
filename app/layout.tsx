@@ -1,15 +1,24 @@
-import React from "react";
 import "./globals.css";
 import { Inter } from "next/font/google";
 import ClientLayout from "./client-layout";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from 'next';
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Zkypee - Better than Skype",
-  description: "Make calls with ease and transfer your Skype credits",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
+  title: {
+    template: '%s | Zkypee',
+    default: 'Zkypee | Connect with Anyone, Anywhere',
+  },
+  description: 'Make high-quality voice and video calls to anyone in the world with Zkypee.',
+};
+
+// Default viewport configuration for all pages
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({

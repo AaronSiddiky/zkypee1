@@ -1,10 +1,6 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
   "/dial/page": "app/dial/page.js",
-  "/api/twilio/token/route": "app/api/twilio/token/route.js",
   "/api/twilio/phone-number/route": "app/api/twilio/phone-number/route.js",
-  "/buy-number/page": "app/buy-number/page.js",
-  "/features/page": "app/features/page.js",
-  "/chats/page": "app/chats/page.js"
+  "/api/twilio/token/route": "app/api/twilio/token/route.js"
 }
