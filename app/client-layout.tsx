@@ -65,6 +65,18 @@ function NavbarContent() {
                 Transfer Skype Credits
               </Link>
               <Link
+                href="/buy-number"
+                className="text-gray-700 hover:text-blue-500"
+              >
+                Buy a Number
+              </Link>
+              <Link
+                href="/chats"
+                className="text-gray-700 hover:text-blue-500"
+              >
+                Chats
+              </Link>
+              <Link
                 href="/dial"
                 className="bg-green-500 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-green-600"
               >
@@ -130,6 +142,20 @@ function NavbarContent() {
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Transfer Skype Credits
+              </Link>
+              <Link
+                href="/buy-number"
+                className="text-gray-700 hover:text-blue-500 py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Buy a Number
+              </Link>
+              <Link
+                href="/chats"
+                className="text-gray-700 hover:text-blue-500 py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Chats
               </Link>
               <Link
                 href="/dial"

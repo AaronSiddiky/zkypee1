@@ -13,6 +13,7 @@ interface ButtonProps {
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
   fullWidth?: boolean;
+  customWidth?: string;
 }
 
 export default function Button({
@@ -25,34 +26,37 @@ export default function Button({
   type = "button",
   disabled = false,
   fullWidth = false,
+  customWidth = "",
 }: ButtonProps) {
-  // Determine base styles based on variant
-  const baseStyles = {
-    primary: "bg-blue-500 text-white hover:bg-blue-600",
-    secondary: "bg-gray-200 text-gray-800 hover:bg-gray-300",
-    outline:
-      "bg-transparent text-blue-500 border border-blue-500 hover:bg-blue-50",
-  };
-
-  // Determine size styles
+  // Base styles
+  const baseStyles = "rounded-full text-center font-medium";
+  
+  // Variant styles
+  const variantStyles = variant === "primary" 
+    ? "bg-[#82D091] text-white hover:bg-[#6BC07F]" 
+    : "bg-[#4E84F7] text-white hover:bg-[#3D73E6]";
+  
+  // Responsive padding based on screen size
   const sizeStyles = {
-    small: "px-2 sm:px-3 py-1 text-xs sm:text-sm",
-    medium: "px-4 sm:px-6 py-2 text-sm sm:text-base",
-    large: "px-6 sm:px-8 py-2 sm:py-3 text-base sm:text-lg",
+    small: "px-3 py-1 text-xs",
+    medium: "px-4 py-2 text-sm",
+    large: "px-5 py-3 text-base",
   };
-
+  
+  // Width styles - more responsive
+  const widthStyles = fullWidth 
+    ? "w-full" 
+    : customWidth 
+      ? customWidth 
+      : "w-auto max-w-[200px] mx-auto"; // Add max-width for mobile
+  
   // Combine all styles
   const buttonStyles = `
-    ${baseStyles[variant]} 
+    ${baseStyles} 
+    ${variantStyles} 
     ${sizeStyles[size]} 
-    rounded-full 
-    transition-colors 
-    focus:outline-none 
-    focus:ring-2 
-    focus:ring-blue-500 
-    focus:ring-opacity-50
+    ${widthStyles}
     ${disabled ? "opacity-50 cursor-not-allowed" : ""}
-    ${fullWidth ? "w-full" : ""}
     ${className}
   `;
 

@@ -1,3 +1,8 @@
 {
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/api/bland-ai/route": "app/api/bland-ai/route.js",
+  "/dial/page": "app/dial/page.js",
+  "/buy-number/page": "app/buy-number/page.js",
+  "/features/page": "app/features/page.js",
+  "/chats/page": "app/chats/page.js"
 }

@@ -19,6 +19,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: `
+          /* Target all buttons in the app */
+          button {
+            max-width: 160px !important;
+          }
+          
+          /* Target specific button text */
+          button:contains("Call Now"), 
+          button:contains("Join Waitlist") {
+            width: 160px !important;
+            max-width: 160px !important;
+          }
+        `}} />
+      </head>
       <body className={inter.className}>
         <ClientLayout>{children}</ClientLayout>
       </body>

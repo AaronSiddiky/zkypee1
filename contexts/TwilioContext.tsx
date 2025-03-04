@@ -33,6 +33,13 @@ interface TwilioContextType {
     deviceState: string | null;
     error: string | null;
   };
+  connection: any;
+  token: string | null;
+  setupDevice: () => Promise<void>;
+  connect: (phoneNumber: string) => void;
+  disconnect: () => void;
+  makeAICall: (prompt: string, phoneNumber: string) => Promise<any>;
+  getAICallStatus: (callId: string) => Promise<any>;
 }
 
 const TwilioContext = createContext<TwilioContextType | undefined>(undefined);
@@ -60,6 +67,8 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   });
   const initRetryCount = useRef(0);
   const maxRetries = 3;
+  const [connection, setConnection] = useState<any>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   // Function to update debug info
   const updateDebugInfo = (
@@ -333,129 +342,81 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  // Function to make a call
+  // Simplified makeCall function
   const makeCall = async (phoneNumber: string) => {
-    console.log("Making call to:", phoneNumber);
-    updateDebugInfo("makeCall_start");
-    setError(null);
-
-    // Default to the specified number if none is provided
-    const numberToCall = phoneNumber || "+13324007734";
-
-    // Check if device is ready
-    if (!device || !isReady) {
-      console.log("Device not ready, attempting to initialize...");
-      updateDebugInfo("makeCall_device_not_ready", getDeviceState(device));
-
-      // Try to initialize the device
-      const initSuccess = await initializeDevice();
-      if (!initSuccess || !device) {
-        console.error("Failed to initialize device for call");
-        setError("Device initialization failed. Please try again.");
-        updateDebugInfo(
-          "makeCall_init_failed",
-          null,
-          "Device initialization failed"
-        );
-        return false;
-      }
-
-      // Wait a moment for the device to fully register
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Check again if the device is ready
-      if (!isReady) {
-        console.error("Device still not ready after initialization");
-        setError("Device not ready. Please refresh and try again.");
-        updateDebugInfo("makeCall_still_not_ready", getDeviceState(device));
-        return false;
-      }
+    if (!device) {
+      console.error("Twilio device not initialized");
+      setError("Twilio device not initialized");
+      return false;
     }
 
     try {
-      // Prepare call parameters
-      const params = {
-        To: numberToCall,
-      };
-
-      console.log("Initiating call with params:", params);
-      updateDebugInfo("makeCall_initiating", getDeviceState(device));
-
-      // Start connecting state
+      console.log(`Making call to ${phoneNumber}`);
+      
+      // Make sure the device is ready
+      if (!isReady) {
+        console.log("Device not ready, waiting...");
+        setError("Device not ready. Please try again in a moment.");
+        return false;
+      }
+      
+      // Connect the call
       setIsConnecting(true);
-
-      // Make the call
-      const call = await device.connect({ params });
-      console.log("Call initiated successfully");
-      updateDebugInfo("makeCall_connected", getDeviceState(device));
-
-      // Set up call event listeners
-      call.on("accept", () => {
-        console.log("Call accepted event");
-        updateDebugInfo("call_event_accept", getDeviceState(device));
+      
+      const params = {
+        To: phoneNumber
+      };
+      
+      const conn = await device.connect({ params });
+      console.log("Call connected:", conn);
+      
+      // Set up connection event handlers
+      conn.on("accept", () => {
+        console.log("Call accepted");
         setIsConnected(true);
         setIsConnecting(false);
+        setError(null);
       });
-
-      call.on("disconnect", () => {
-        console.log("Call disconnected event");
-        updateDebugInfo("call_event_disconnect", getDeviceState(device));
+      
+      conn.on("disconnect", () => {
+        console.log("Call disconnected");
         setIsConnected(false);
         setIsConnecting(false);
-        setActiveCall(null);
+        setConnection(null);
       });
-
-      call.on("error", (callError) => {
-        console.error("Call error event:", callError);
-        updateDebugInfo(
-          "call_event_error",
-          getDeviceState(device),
-          callError.message
-        );
-        setError(`Call error: ${callError.message}`);
+      
+      conn.on("error", (err) => {
+        console.error("Call error:", err);
+        setError(`Call error: ${err.message || "Unknown error"}`);
         setIsConnected(false);
         setIsConnecting(false);
-        setActiveCall(null);
+        setConnection(null);
       });
-
-      // Store the active call
-      setActiveCall(call);
+      
+      setConnection(conn);
       return true;
-    } catch (callError: any) {
-      console.error("Error making call:", callError);
-      updateDebugInfo(
-        "makeCall_error",
-        getDeviceState(device),
-        callError.message
-      );
-      setError(`Failed to make call: ${callError.message}`);
+    } catch (error) {
+      console.error("Error making call:", error);
+      setError(`Call failed: ${error.message || "Unknown error"}`);
       setIsConnecting(false);
       return false;
     }
   };
 
-  // Function to hang up a call
+  // Simplified hangUp function
   const hangUp = () => {
-    console.log("Hanging up call");
-    updateDebugInfo("hangUp_start", getDeviceState(device));
-
-    if (activeCall) {
+    if (connection) {
       try {
-        activeCall.disconnect();
-        console.log("Call disconnected successfully");
-        updateDebugInfo("hangUp_success", getDeviceState(device));
-      } catch (err: any) {
-        console.error("Error hanging up call:", err);
-        updateDebugInfo("hangUp_error", getDeviceState(device), err.message);
+        connection.disconnect();
+        console.log("Call disconnected");
+      } catch (error) {
+        console.error("Error hanging up call:", error);
       }
-    } else {
-      console.log("No active call to hang up");
-      updateDebugInfo("hangUp_no_active_call", getDeviceState(device));
     }
-
+    
     setIsConnected(false);
     setIsConnecting(false);
-    setActiveCall(null);
+    setConnection(null);
   };
 
   // Function to test the connection
@@ -545,6 +506,128 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setupDevice = async () => {
+    try {
+      console.log('Setting up Twilio device...');
+      
+      // Get token from your backend
+      const response = await fetch('/api/twilio/token');
+      const data = await response.json();
+      
+      if (!data.token) {
+        console.error('Failed to get Twilio token');
+        setError('Failed to get Twilio token');
+        return;
+      }
+      
+      setToken(data.token);
+      
+      // Initialize Twilio device
+      console.log('Initializing device with token...');
+      const newDevice = new Device();
+      
+      // Set up event listeners before setup
+      newDevice.on('ready', () => {
+        console.log('Device is ready');
+        setIsReady(true);
+        setError(null);
+      });
+      
+      newDevice.on('error', (err) => {
+        console.error('Twilio device error:', err);
+        setError(`Device error: ${err.message || 'Unknown error'}`);
+      });
+      
+      newDevice.on('connect', (conn) => {
+        console.log('Call connected');
+        setConnection(conn);
+        setIsConnected(true);
+        setIsConnecting(false);
+        
+        // Set up call event listeners
+        conn.on('disconnect', () => {
+          console.log('Call disconnected');
+          setIsConnected(false);
+          setConnection(null);
+        });
+      });
+      
+      // Setup the device with the token
+      await newDevice.setup(data.token);
+      console.log('Device setup complete');
+      
+      setDevice(newDevice);
+    } catch (error) {
+      console.error('Error setting up Twilio device:', error);
+      setError(`Setup error: ${error.message || 'Unknown error'}`);
+    }
+  };
+
+  const connect = (phoneNumber) => {
+    if (!device) {
+      console.error('Twilio device not initialized');
+      return;
+    }
+    
+    try {
+      const conn = device.connect({
+        To: phoneNumber,
+      });
+      
+      setConnection(conn);
+    } catch (error) {
+      console.error('Error connecting call:', error);
+    }
+  };
+
+  const disconnect = () => {
+    if (connection) {
+      connection.disconnect();
+      setConnection(null);
+    }
+  };
+
+  const makeAICall = async (prompt, phoneNumber) => {
+    try {
+      const response = await fetch('/api/bland-ai', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt,
+          phoneNumber,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to schedule AI call');
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error making AI call:', error);
+      throw error;
+    }
+  };
+
+  const getAICallStatus = async (callId) => {
+    try {
+      const response = await fetch(`/api/bland-ai?callId=${callId}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to get AI call status');
+      }
+      
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('Error getting AI call status:', error);
+      throw error;
+    }
+  };
+
   return (
     <TwilioContext.Provider
       value={{
@@ -559,6 +642,13 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         initializeDevice,
         testConnection,
         deviceDebugInfo,
+        connection,
+        token,
+        setupDevice,
+        connect,
+        disconnect,
+        makeAICall,
+        getAICallStatus,
       }}
     >
       {children}

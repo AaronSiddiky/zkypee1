@@ -149,3 +149,42 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function GET() {
+  try {
+    // Generate a token with Twilio credentials
+    const AccessToken = twilio.jwt.AccessToken;
+    const VoiceGrant = AccessToken.VoiceGrant;
+    
+    // Create a Voice grant for this token
+    const voiceGrant = new VoiceGrant({
+      outgoingApplicationSid: process.env.TWILIO_TWIML_APP_SID, // Use the correct environment variable
+      incomingAllow: true,
+    });
+    
+    // Create an access token which we will sign and return to the client
+    const token = new AccessToken(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_API_KEY,
+      process.env.TWILIO_API_SECRET,
+      {
+        identity: 'anonymous-user', // Provide a default identity
+        ttl: 3600,
+      }
+    );
+    
+    // Add the grant to the token
+    token.addGrant(voiceGrant);
+    
+    // Generate the token string
+    const tokenString = token.toJwt();
+    
+    return NextResponse.json({ token: tokenString });
+  } catch (error) {
+    console.error('Error generating Twilio token:', error);
+    return NextResponse.json(
+      { error: 'Failed to generate token' },
+      { status: 500 }
+    );
+  }
+}
