@@ -1,35 +1,64 @@
-import React from 'react';
-import Image from 'next/image';
-import { formatDistanceToNow } from 'date-fns';
+import React from "react";
+import Image from "next/image";
+import { formatDistanceToNow } from "date-fns";
 
-export default function ChatSidebar({ 
-  contacts, 
-  selectedContactId, 
-  onSelectContact, 
+interface Contact {
+  id: string;
+  name: string;
+  avatar?: string;
+  status: "online" | "offline" | "away" | "busy";
+}
+
+interface Message {
+  sender: "me" | string;
+  text: string;
+  timestamp: string;
+}
+
+interface ChatSidebarProps {
+  contacts: Contact[];
+  selectedContactId: string | null;
+  onSelectContact: (contact: Contact) => void;
+  conversations: { [key: string]: Message[] };
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  onAddFriendClick: () => void;
+}
+
+export default function ChatSidebar({
+  contacts,
+  selectedContactId,
+  onSelectContact,
   conversations,
   searchQuery,
   onSearchChange,
-  onAddFriendClick
-}) {
+  onAddFriendClick,
+}: ChatSidebarProps) {
   // Get the last message for each contact
-  const getLastMessage = (contactId) => {
+  const getLastMessage = (contactId: string): Message | null => {
     const conversation = conversations[contactId] || [];
-    return conversation.length > 0 ? conversation[conversation.length - 1] : null;
+    return conversation.length > 0
+      ? conversation[conversation.length - 1]
+      : null;
   };
 
   // Format the timestamp
-  const formatTime = (timestamp) => {
-    if (!timestamp) return '';
+  const formatTime = (timestamp: string): string => {
+    if (!timestamp) return "";
     return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
   };
 
   // Get status indicator color
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: Contact["status"]): string => {
     switch (status) {
-      case 'online': return 'bg-green-500';
-      case 'away': return 'bg-yellow-500';
-      case 'busy': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case "online":
+        return "bg-green-500";
+      case "away":
+        return "bg-yellow-500";
+      case "busy":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
     }
   };
 
@@ -39,12 +68,17 @@ export default function ChatSidebar({
       <div className="p-4 border-b border-gray-200">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold text-gray-800">Chats</h2>
-          <button 
+          <button
             onClick={onAddFriendClick}
             className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
             title="Add a friend"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
               <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
             </svg>
           </button>
@@ -58,23 +92,32 @@ export default function ChatSidebar({
             onChange={(e) => onSearchChange(e.target.value)}
           />
           <div className="absolute left-3 top-2.5 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                clipRule="evenodd"
+              />
             </svg>
           </div>
         </div>
       </div>
-      
+
       {/* Contacts list */}
       <div className="flex-1 overflow-y-auto">
         {contacts.map((contact) => {
           const lastMessage = getLastMessage(contact.id);
-          
+
           return (
-            <div 
+            <div
               key={contact.id}
               className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                selectedContactId === contact.id ? 'bg-blue-50' : ''
+                selectedContactId === contact.id ? "bg-blue-50" : ""
               }`}
               onClick={() => onSelectContact(contact)}
             >
@@ -95,39 +138,45 @@ export default function ChatSidebar({
                       </div>
                     )}
                   </div>
-                  <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(contact.status)}`}></div>
+                  <div
+                    className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${getStatusColor(
+                      contact.status
+                    )}`}
+                  ></div>
                 </div>
-                
+
                 <div className="ml-3 flex-1 min-w-0">
                   <div className="flex justify-between items-baseline">
-                    <h3 className="font-medium text-gray-900">{contact.name}</h3>
+                    <h3 className="font-medium text-gray-900">
+                      {contact.name}
+                    </h3>
                     {lastMessage && (
                       <span className="text-xs text-gray-500">
                         {formatTime(lastMessage.timestamp)}
                       </span>
                     )}
                   </div>
-                  
+
                   {lastMessage ? (
                     <p className="text-sm text-gray-500 truncate">
-                      {lastMessage.sender === 'me' ? 'You: ' : ''}
+                      {lastMessage.sender === "me" ? "You: " : ""}
                       {lastMessage.text}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-400 italic">No messages yet</p>
+                    <p className="text-sm text-gray-400 italic">
+                      No messages yet
+                    </p>
                   )}
                 </div>
               </div>
             </div>
           );
         })}
-        
+
         {contacts.length === 0 && (
-          <div className="p-4 text-center text-gray-500">
-            No contacts found
-          </div>
+          <div className="p-4 text-center text-gray-500">No contacts found</div>
         )}
       </div>
     </div>
   );
-} 
+}
