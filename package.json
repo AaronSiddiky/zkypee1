@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@stripe/stripe-js": "^5.8.0",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.49.1",
     "@twilio/voice-sdk": "^2.12.3",
     "date-fns": "^4.1.0",
