@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import Button from '../components/Button';
+import React from "react";
+import Button from "./components/Button";
 
 export default function HomePage() {
   const handleJoinWaitlist = () => {
@@ -13,7 +13,9 @@ export default function HomePage() {
       <h1 className="text-3xl font-bold mb-4">Welcome to My Website</h1>
       <p className="mb-4">This is a simple React TypeScript website.</p>
       <div className="mt-6 flex justify-center">
-        <Button onClick={handleJoinWaitlist} customWidth="w-48">Join Waitlist</Button>
+        <Button onClick={handleJoinWaitlist} customWidth="w-48">
+          Join Waitlist
+        </Button>
       </div>
     </main>
   );
