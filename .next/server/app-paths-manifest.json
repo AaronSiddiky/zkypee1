@@ -1,7 +1,12 @@
 {
-  "/api/twilio/countries/route": "app/api/twilio/countries/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/page": "app/page.js",
   "/api/twilio/token/route": "app/api/twilio/token/route.js",
+  "/api/twilio/countries/route": "app/api/twilio/countries/route.js",
   "/dial/page": "app/dial/page.js",
   "/api/twilio/phone-number/route": "app/api/twilio/phone-number/route.js",
-  "/buy-number/page": "app/buy-number/page.js"
+  "/transfer/page": "app/transfer/page.js",
+  "/buy-number/page": "app/buy-number/page.js",
+  "/chats/page": "app/chats/page.js",
+  "/features/page": "app/features/page.js"
 }

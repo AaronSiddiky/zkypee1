@@ -1,17 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Button from '../../components/Button';
-import { fetchAvailableCountries, fetchAvailableNumbers } from '../../lib/twilio';
-import CountryCard from '../../components/CountryCard';
-import NumberList from '../../components/NumberList';
+import React, { useState, useEffect } from "react";
+import Button from "../../components/Button";
+import {
+  fetchAvailableCountries,
+  fetchAvailableNumbers,
+} from "../../lib/twilio";
+import CountryCard from "../../components/CountryCard";
+import NumberList from "../../components/NumberList";
 
 export default function BuyNumberPage() {
-  const [countries, setCountries] = useState([]);
+  const [countries, setCountries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedCountry, setSelectedCountry] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadCountries() {
@@ -31,31 +34,36 @@ export default function BuyNumberPage() {
   }, []);
 
   // Filter countries based on search query
-  const filteredCountries = countries.filter(country => 
-    country.countryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    country.countryCode.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCountries = countries.filter(
+    (country) =>
+      country.countryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      country.countryCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-blue-500">Buy a Phone Number</h1>
-      
+      <h1 className="text-3xl font-bold mb-6 text-blue-500">
+        Buy a Phone Number
+      </h1>
+
       {loading && (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       )}
-      
+
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           {error}
         </div>
       )}
-      
+
       {!loading && !error && (
         <>
-          <p className="mb-6">Select a country to view available phone numbers:</p>
-          
+          <p className="mb-6">
+            Select a country to view available phone numbers:
+          </p>
+
           {/* Search input */}
           <div className="mb-6">
             <input
@@ -66,16 +74,18 @@ export default function BuyNumberPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
+
           {/* Country grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {filteredCountries.length > 0 ? (
               filteredCountries.map((country) => (
-                <CountryCard 
+                <CountryCard
                   key={country.countryCode}
                   country={country}
                   onClick={() => setSelectedCountry(country)}
-                  isSelected={selectedCountry?.countryCode === country.countryCode}
+                  isSelected={
+                    selectedCountry?.countryCode === country.countryCode
+                  }
                 />
               ))
             ) : (
@@ -84,7 +94,7 @@ export default function BuyNumberPage() {
               </div>
             )}
           </div>
-          
+
           {/* Selected country numbers */}
           {selectedCountry && (
             <div className="mt-8">
@@ -98,4 +108,4 @@ export default function BuyNumberPage() {
       )}
     </div>
   );
-} 
+}
