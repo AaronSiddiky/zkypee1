@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import twilio from "twilio";
 import type { Twilio } from "twilio";
 
+// Define our number types
+type NumberType = "local" | "tollfree" | "mobile";
+
 // Initialize Twilio client with your credentials
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
@@ -12,7 +15,7 @@ const client = twilio(
 const FIXED_MARKUP = 0.3; // $0.30 fixed markup
 
 // Cache for pricing information to avoid repeated API calls
-const pricingCache = new Map<string, Record<string, number>>();
+const pricingCache = new Map<string, Record<NumberType, number>>();
 
 // Special handling for certain countries
 const countrySpecificConfig: Record<
@@ -51,7 +54,7 @@ export async function GET(request: Request) {
 
   try {
     // First, get the pricing information for this country
-    let countryPricing: Record<string, number>;
+    let countryPricing: Record<NumberType, number>;
 
     // Check if we have cached pricing for this country
     if (pricingCache.has(countryCode)) {
@@ -68,17 +71,17 @@ export async function GET(request: Request) {
           local: 1.0,
           tollfree: 2.0,
           mobile: 1.5,
-        };
+        } as Record<NumberType, number>;
 
         if (pricingInfo && pricingInfo.phoneNumberPrices) {
           pricingInfo.phoneNumberPrices.forEach((price) => {
             // Convert from string to number and from USD to a numeric value
-            const monthlyPrice = price.current_price
-              ? parseFloat(price.current_price)
-              : 0;
+            const monthlyPrice =
+              typeof price.current_price === "string"
+                ? parseFloat(price.current_price)
+                : 0;
             if (price.number_type) {
-              const type =
-                price.number_type.toLowerCase() as keyof typeof countryPricing;
+              const type = price.number_type.toLowerCase() as NumberType;
               countryPricing[type] = monthlyPrice;
             }
           });
@@ -89,7 +92,11 @@ export async function GET(request: Request) {
       } catch (error) {
         console.error(`Error fetching pricing for ${countryCode}:`, error);
         // If we can't get pricing, use a default value
-        countryPricing = { local: 1.0, tollFree: 2.0, mobile: 1.5 };
+        countryPricing = {
+          local: 1.0,
+          tollfree: 2.0,
+          mobile: 1.5,
+        } as Record<NumberType, number>;
       }
     }
 
@@ -197,7 +204,7 @@ export async function GET(request: Request) {
       };
 
       // Determine number type and get the base price from Twilio's pricing API
-      let numberType: "local" | "tollFree" | "mobile" = "local";
+      let numberType: NumberType = "local";
 
       // Check for toll-free numbers
       if (
@@ -209,7 +216,7 @@ export async function GET(request: Request) {
         number.phoneNumber.startsWith("+1844") ||
         number.phoneNumber.includes("toll-free")
       ) {
-        numberType = "tollFree";
+        numberType = "tollfree";
       }
       // Check for mobile numbers
       else if (
