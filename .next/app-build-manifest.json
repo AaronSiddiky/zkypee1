@@ -1,9 +1,14 @@
 {
   "pages": {
-    "/page": [
+    "/buy-number/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/buy-number/page.js"
+    ],
+    "/buy-number/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/buy-number/layout.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -15,16 +20,6 @@
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/dial/page.js"
-    ],
-    "/buy-number/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/buy-number/page.js"
-    ],
-    "/buy-number/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/buy-number/layout.js"
     ]
   }
 }
