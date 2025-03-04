@@ -53,10 +53,10 @@ function NavbarContent() {
           <div className="hidden md:flex items-center">
             <nav className="flex items-center space-x-4 lg:space-x-8 mr-4 lg:mr-8">
               <Link
-                href="/features"
+                href="/buy-number"
                 className="text-gray-700 hover:text-blue-500"
               >
-                Features
+                Buy a Number
               </Link>
               <Link
                 href="/transfer"
@@ -65,17 +65,16 @@ function NavbarContent() {
                 Transfer Skype Credits
               </Link>
               <Link
-                href="/buy-number"
+                href="/features"
                 className="text-gray-700 hover:text-blue-500"
               >
-                Buy a Number
+                Features
               </Link>
+
               <Link
                 href="/chats"
                 className="text-gray-700 hover:text-blue-500"
-              >
-                Chats
-              </Link>
+              ></Link>
               <Link
                 href="/dial"
                 className="bg-green-500 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-green-600"

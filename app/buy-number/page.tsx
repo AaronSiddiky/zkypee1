@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Button from "../../components/Button";
 import {
   fetchAvailableCountries,
@@ -10,6 +11,7 @@ import CountryCard from "../../components/CountryCard";
 import NumberList from "../../components/NumberList";
 
 export default function BuyNumberPage() {
+  const router = useRouter();
   const [countries, setCountries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +42,14 @@ export default function BuyNumberPage() {
       country.countryCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleCountrySelect = (country: any) => {
+    router.push(`/buy-number/${country.countryCode}`);
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6 text-blue-500">
-        Buy a Phone Number
+        Buy a Phone Number (Comming soon👇)
       </h1>
 
       {loading && (
@@ -82,7 +88,7 @@ export default function BuyNumberPage() {
                 <CountryCard
                   key={country.countryCode}
                   country={country}
-                  onClick={() => setSelectedCountry(country)}
+                  onClick={() => handleCountrySelect(country)}
                   isSelected={
                     selectedCountry?.countryCode === country.countryCode
                   }

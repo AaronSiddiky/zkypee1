@@ -1,5 +1,8 @@
 {
-  "/dial/page": "app/dial/page.js",
-  "/api/twilio/phone-number/route": "app/api/twilio/phone-number/route.js",
-  "/api/twilio/token/route": "app/api/twilio/token/route.js"
+  "/page": "app/page.js",
+  "/transfer/page": "app/transfer/page.js",
+  "/buy-number/page": "app/buy-number/page.js",
+  "/chats/page": "app/chats/page.js",
+  "/buy-number/[countryCode]/page": "app/buy-number/[countryCode]/page.js",
+  "/features/page": "app/features/page.js"
 }
