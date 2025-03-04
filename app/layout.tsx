@@ -1,7 +1,12 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
-import ClientLayout from "./client-layout";
+import dynamic from "next/dynamic";
 import type { Metadata, Viewport } from 'next';
+
+// Import ClientLayout with dynamic import to avoid webpack issues
+const ClientLayout = dynamic(() => import("./client-layout"), {
+  ssr: false
+});
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -13,7 +18,7 @@ export const metadata: Metadata = {
   description: 'Make high-quality voice and video calls to anyone in the world with Zkypee.',
 };
 
-// Default viewport configuration for all pages
+// Separate viewport export
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,

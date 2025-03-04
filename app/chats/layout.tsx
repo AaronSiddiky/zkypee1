@@ -1,8 +1,15 @@
 import React from 'react';
+import type { Metadata, Viewport } from 'next';
 
-export const metadata = {
-  title: 'Chats | VoIP Service',
-  description: 'Chat with your contacts using our messaging service',
+export const metadata: Metadata = {
+  title: 'Chats | Zkypee',
+  description: 'Chat with your contacts on Zkypee.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function ChatsLayout({
