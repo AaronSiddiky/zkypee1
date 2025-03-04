@@ -195,10 +195,14 @@ export default function AIVoiceAssistant({
       ).then((r) => r.json());
 
       setCallResult((prev) => ({
-        ...prev,
-        recording: refreshResult.recording || prev.recording,
-        transcript: refreshResult.transcript || prev.transcript,
-        summary: refreshResult.summary || prev.summary,
+        ...(prev || { callId: callResult.callId }),
+        recording: refreshResult.recording || prev?.recording || null,
+        transcript:
+          refreshResult.transcript ||
+          prev?.transcript ||
+          "No transcript available",
+        summary:
+          refreshResult.summary || prev?.summary || "No summary available",
       }));
     } catch (error) {
       console.error("Error refreshing call data:", error);
