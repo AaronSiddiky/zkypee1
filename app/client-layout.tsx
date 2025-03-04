@@ -1,16 +1,47 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { TwilioProvider } from "../contexts/TwilioContext";
 import Auth from "../components/Auth";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 function NavbarContent() {
   const { user, loading, signOut } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  // Add click outside handler
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target as Node)
+      ) {
+        setProfileMenuOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.push("/"); // Redirect to home page after logout
+      router.refresh(); // Refresh the page to update the auth state
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <>
@@ -98,15 +129,24 @@ function NavbarContent() {
                 Login
               </button>
             ) : (
-              <div className="relative group">
-                <button className="flex items-center space-x-2">
+              <div className="relative group" ref={profileMenuRef}>
+                <button
+                  className="flex items-center space-x-2"
+                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                >
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
                     {user?.email?.charAt(0).toUpperCase() || "U"}
                   </div>
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div
+                  className={`absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 transition-all duration-200 z-50 ${
+                    profileMenuOpen
+                      ? "opacity-100 visible"
+                      : "opacity-0 invisible"
+                  }`}
+                >
                   <button
-                    onClick={signOut}
+                    onClick={handleSignOut}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Logout
@@ -189,8 +229,8 @@ function NavbarContent() {
                       {user?.email?.charAt(0).toUpperCase() || "U"}
                     </div>
                     <button
-                      onClick={() => {
-                        signOut();
+                      onClick={async () => {
+                        await handleSignOut();
                         setMobileMenuOpen(false);
                       }}
                       className="text-gray-700 hover:text-blue-500"

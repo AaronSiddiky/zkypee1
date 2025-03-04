@@ -1,8 +1,8 @@
 {
   "/page": "app/page.js",
-  "/transfer/page": "app/transfer/page.js",
+  "/api/twilio/token/route": "app/api/twilio/token/route.js",
+  "/api/twilio/countries/route": "app/api/twilio/countries/route.js",
   "/buy-number/page": "app/buy-number/page.js",
-  "/chats/page": "app/chats/page.js",
-  "/buy-number/[countryCode]/page": "app/buy-number/[countryCode]/page.js",
-  "/features/page": "app/features/page.js"
+  "/features/page": "app/features/page.js",
+  "/transfer/page": "app/transfer/page.js"
 }
