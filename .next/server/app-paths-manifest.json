@@ -1,4 +1,8 @@
 {
   "/dial/page": "app/dial/page.js",
-  "/api/bland-ai/route": "app/api/bland-ai/route.js"
+  "/api/twilio/phone-number/route": "app/api/twilio/phone-number/route.js",
+  "/api/twilio/token/route": "app/api/twilio/token/route.js",
+  "/api/twilio/countries/route": "app/api/twilio/countries/route.js",
+  "/api/twilio/numbers/route": "app/api/twilio/numbers/route.js",
+  "/buy-number/page": "app/buy-number/page.js"
 }
