@@ -405,7 +405,11 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       return true;
     } catch (error) {
       console.error("Error making call:", error);
-      setError(`Call failed: ${error.message || "Unknown error"}`);
+      setError(
+        `Call failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
       setIsConnecting(false);
       return false;
     }
