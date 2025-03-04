@@ -152,39 +152,49 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
+    // Check if Twilio credentials are set
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const apiKey = process.env.TWILIO_API_KEY;
+    const apiSecret = process.env.TWILIO_API_SECRET;
+    const twimlAppSid = process.env.TWILIO_TWIML_APP_SID;
+
+    // Verify all required credentials are present
+    if (!accountSid || !apiKey || !apiSecret || !twimlAppSid) {
+      console.error("Missing Twilio credentials");
+      return NextResponse.json(
+        { error: "Missing Twilio credentials" },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
     // Generate a token with Twilio credentials
     const AccessToken = twilio.jwt.AccessToken;
     const VoiceGrant = AccessToken.VoiceGrant;
-    
+
     // Create a Voice grant for this token
     const voiceGrant = new VoiceGrant({
-      outgoingApplicationSid: process.env.TWILIO_TWIML_APP_SID, // Use the correct environment variable
+      outgoingApplicationSid: twimlAppSid,
       incomingAllow: true,
     });
-    
+
     // Create an access token which we will sign and return to the client
-    const token = new AccessToken(
-      process.env.TWILIO_ACCOUNT_SID,
-      process.env.TWILIO_API_KEY,
-      process.env.TWILIO_API_SECRET,
-      {
-        identity: 'anonymous-user', // Provide a default identity
-        ttl: 3600,
-      }
-    );
-    
+    const token = new AccessToken(accountSid, apiKey, apiSecret, {
+      identity: "anonymous-user", // Provide a default identity
+      ttl: 3600,
+    });
+
     // Add the grant to the token
     token.addGrant(voiceGrant);
-    
+
     // Generate the token string
     const tokenString = token.toJwt();
-    
-    return NextResponse.json({ token: tokenString });
+
+    return NextResponse.json({ token: tokenString }, { headers: corsHeaders });
   } catch (error) {
-    console.error('Error generating Twilio token:', error);
+    console.error("Error generating Twilio token:", error);
     return NextResponse.json(
-      { error: 'Failed to generate token' },
-      { status: 500 }
+      { error: "Failed to generate token" },
+      { status: 500, headers: corsHeaders }
     );
   }
 }
