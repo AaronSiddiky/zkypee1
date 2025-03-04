@@ -287,10 +287,18 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         setupInProgress.current = false;
         return false;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("General error in device initialization:", error);
-      setError(`Initialization error: ${error.message || "Unknown error"}`);
-      updateDebugInfo("initializeDevice_general_error", null, error.message);
+      setError(
+        `Initialization error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+      updateDebugInfo(
+        "initializeDevice_general_error",
+        null,
+        error instanceof Error ? error.message : "Unknown error"
+      );
 
       // Try to recover by retrying
       setupInProgress.current = false;
@@ -352,24 +360,24 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
 
     try {
       console.log(`Making call to ${phoneNumber}`);
-      
+
       // Make sure the device is ready
       if (!isReady) {
         console.log("Device not ready, waiting...");
         setError("Device not ready. Please try again in a moment.");
         return false;
       }
-      
+
       // Connect the call
       setIsConnecting(true);
-      
+
       const params = {
-        To: phoneNumber
+        To: phoneNumber,
       };
-      
+
       const conn = await device.connect({ params });
       console.log("Call connected:", conn);
-      
+
       // Set up connection event handlers
       conn.on("accept", () => {
         console.log("Call accepted");
@@ -377,14 +385,14 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         setIsConnecting(false);
         setError(null);
       });
-      
+
       conn.on("disconnect", () => {
         console.log("Call disconnected");
         setIsConnected(false);
         setIsConnecting(false);
         setConnection(null);
       });
-      
+
       conn.on("error", (err) => {
         console.error("Call error:", err);
         setError(`Call error: ${err.message || "Unknown error"}`);
@@ -392,7 +400,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         setIsConnecting(false);
         setConnection(null);
       });
-      
+
       setConnection(conn);
       return true;
     } catch (error) {
@@ -413,7 +421,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         console.error("Error hanging up call:", error);
       }
     }
-    
+
     setIsConnected(false);
     setIsConnecting(false);
     setConnection(null);
@@ -508,75 +516,92 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
 
   const setupDevice = async () => {
     try {
-      console.log('Setting up Twilio device...');
-      
+      console.log("Setting up Twilio device...");
+
       // Get token from your backend
-      const response = await fetch('/api/twilio/token');
+      const response = await fetch("/api/twilio/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ identity: user?.id || "anonymous" }),
+      });
+
       const data = await response.json();
-      
+
       if (!data.token) {
-        console.error('Failed to get Twilio token');
-        setError('Failed to get Twilio token');
+        console.error("Failed to get Twilio token");
+        setError("Failed to get Twilio token");
         return;
       }
-      
+
       setToken(data.token);
-      
-      // Initialize Twilio device
-      console.log('Initializing device with token...');
-      const newDevice = new Device();
-      
+
+      // Initialize Twilio device with token
+      console.log("Initializing device with token...");
+      const newDevice = new Device(data.token, {
+        edge: "ashburn",
+        allowIncomingWhileBusy: true,
+        logLevel: "debug" as any,
+      });
+
       // Set up event listeners before setup
-      newDevice.on('ready', () => {
-        console.log('Device is ready');
+      newDevice.on("registered", () => {
+        console.log("Device is ready");
         setIsReady(true);
         setError(null);
       });
-      
-      newDevice.on('error', (err) => {
-        console.error('Twilio device error:', err);
-        setError(`Device error: ${err.message || 'Unknown error'}`);
+
+      newDevice.on("error", (err: Error) => {
+        console.error("Twilio device error:", err);
+        setError(`Device error: ${err.message || "Unknown error"}`);
       });
-      
-      newDevice.on('connect', (conn) => {
-        console.log('Call connected');
+
+      newDevice.on("connect", (conn) => {
+        console.log("Call connected");
         setConnection(conn);
         setIsConnected(true);
         setIsConnecting(false);
-        
+
         // Set up call event listeners
-        conn.on('disconnect', () => {
-          console.log('Call disconnected');
+        conn.on("disconnect", () => {
+          console.log("Call disconnected");
           setIsConnected(false);
           setConnection(null);
         });
       });
-      
-      // Setup the device with the token
-      await newDevice.setup(data.token);
-      console.log('Device setup complete');
-      
+
+      // Register the device
+      await newDevice.register();
+      console.log("Device setup complete");
+
       setDevice(newDevice);
-    } catch (error) {
-      console.error('Error setting up Twilio device:', error);
-      setError(`Setup error: ${error.message || 'Unknown error'}`);
+    } catch (error: unknown) {
+      console.error("Error setting up Twilio device:", error);
+      setError(
+        `Setup error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
 
-  const connect = (phoneNumber) => {
+  const connect = (phoneNumber: string) => {
     if (!device) {
-      console.error('Twilio device not initialized');
+      console.error("Twilio device not initialized");
       return;
     }
-    
+
     try {
       const conn = device.connect({
-        To: phoneNumber,
+        params: {
+          To: phoneNumber,
+        },
       });
-      
+
       setConnection(conn);
-    } catch (error) {
-      console.error('Error connecting call:', error);
+    } catch (error: unknown) {
+      console.error("Error connecting call:", error);
     }
   };
 
@@ -587,43 +612,43 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const makeAICall = async (prompt, phoneNumber) => {
+  const makeAICall = async (prompt: string, phoneNumber: string) => {
     try {
-      const response = await fetch('/api/bland-ai', {
-        method: 'POST',
+      const response = await fetch("/api/bland-ai", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           prompt,
           phoneNumber,
         }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to schedule AI call');
+        throw new Error("Failed to schedule AI call");
       }
-      
+
       const data = await response.json();
       return data;
-    } catch (error) {
-      console.error('Error making AI call:', error);
+    } catch (error: unknown) {
+      console.error("Error making AI call:", error);
       throw error;
     }
   };
 
-  const getAICallStatus = async (callId) => {
+  const getAICallStatus = async (callId: string) => {
     try {
       const response = await fetch(`/api/bland-ai?callId=${callId}`);
-      
+
       if (!response.ok) {
-        throw new Error('Failed to get AI call status');
+        throw new Error("Failed to get AI call status");
       }
-      
+
       const data = await response.json();
       return data;
-    } catch (error) {
-      console.error('Error getting AI call status:', error);
+    } catch (error: unknown) {
+      console.error("Error getting AI call status:", error);
       throw error;
     }
   };

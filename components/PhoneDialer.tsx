@@ -27,11 +27,50 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     makeCall,
     hangUp,
   } = useTwilio();
-  
+
   const [callDuration, setCallDuration] = useState(0);
-  const [durationInterval, setDurationInterval] = useState(null);
+  const [durationInterval, setDurationInterval] =
+    useState<NodeJS.Timeout | null>(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [twilioNumber, setTwilioNumber] = useState<string | null>(null);
+
+  // Add keyboard event handler
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle if not in a text input and not showing AI assistant
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        showAIAssistant
+      ) {
+        return;
+      }
+
+      const key = event.key;
+
+      // Handle numeric keys (both numpad and regular numbers)
+      if (
+        /^[0-9*#]$/.test(key) ||
+        (event.code === "NumpadEnter" && key === "Enter")
+      ) {
+        event.preventDefault();
+        handleNumberClick(key === "Enter" ? "#" : key);
+      }
+      // Handle backspace/delete
+      else if (key === "Backspace" || key === "Delete") {
+        event.preventDefault();
+        handleDelete();
+      }
+      // Handle Enter key for making calls
+      else if (key === "Enter" && !event.code.includes("Numpad")) {
+        event.preventDefault();
+        handleCall();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [phoneNumber, showAIAssistant, user]); // Add dependencies
 
   // Initialize Twilio device when user is available
   useEffect(() => {
@@ -45,7 +84,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   // Fetch the Twilio phone number
   const fetchTwilioNumber = async () => {
     try {
-      const response = await fetch('/api/twilio/phone-number');
+      const response = await fetch("/api/twilio/phone-number");
       if (response.ok) {
         const data = await response.json();
         if (data.phoneNumber) {
@@ -53,7 +92,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
         }
       }
     } catch (error) {
-      console.error('Error fetching Twilio phone number:', error);
+      console.error("Error fetching Twilio phone number:", error);
     }
   };
 
@@ -62,10 +101,10 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     if (isConnected && connection) {
       console.log("Call connected, starting duration timer");
       const interval = setInterval(() => {
-        setCallDuration(prev => prev + 1);
+        setCallDuration((prev) => prev + 1);
       }, 1000);
       setDurationInterval(interval);
-      
+
       return () => {
         clearInterval(interval);
       };
@@ -91,11 +130,11 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       setShowAuth(true);
       return;
     }
-    setPhoneNumber(prev => prev + num);
+    setPhoneNumber((prev) => prev + num);
   };
 
   const handleDelete = () => {
-    setPhoneNumber(prev => prev.slice(0, -1));
+    setPhoneNumber((prev) => prev.slice(0, -1));
   };
 
   const handleCall = async () => {
@@ -121,15 +160,17 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
-  const handleAICall = async (prompt, phoneNumber, voice = 'cailee') => {
+  const handleAICall = async (prompt, phoneNumber, voice = "cailee") => {
     try {
-      const response = await fetch('/api/bland-ai', {
-        method: 'POST',
+      const response = await fetch("/api/bland-ai", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           prompt,
@@ -137,15 +178,15 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
           voice,
         }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Failed to schedule AI call');
+        throw new Error("Failed to schedule AI call");
       }
-      
+
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('Error making AI call:', error);
+      console.error("Error making AI call:", error);
       throw error;
     }
   };
@@ -265,10 +306,12 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
                       : "Call ended"}
                   </span>
                   {isConnected && (
-                    <span className="text-gray-600">{formatDuration(callDuration)}</span>
+                    <span className="text-gray-600">
+                      {formatDuration(callDuration)}
+                    </span>
                   )}
                 </div>
-                
+
                 <button
                   onClick={handleHangUp}
                   className="w-full py-2 px-4 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium mt-4"
@@ -338,25 +381,43 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
         >
           {showAIAssistant ? (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 inline mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z"
+                  clipRule="evenodd"
+                />
               </svg>
               Return to Manual Dialer
             </>
           ) : (
             <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 inline mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
                 <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                  clipRule="evenodd"
+                />
               </svg>
               Use AI Voice Assistant
             </>
           )}
         </button>
       </div>
-      
+
       {showAIAssistant && (
-        <AIVoiceAssistant 
+        <AIVoiceAssistant
           twilioNumber={twilioNumber || "Loading your Twilio number..."}
           onMakeCall={handleAICall}
         />
