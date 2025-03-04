@@ -21,10 +21,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/buy-number/layout.js"
     ],
-    "/buy-number/[countryCode]/page": [
+    "/dial/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/buy-number/[countryCode]/page.js"
+      "static/chunks/app/dial/page.js"
+    ],
+    "/ai-assistant/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/ai-assistant/page.js"
+    ],
+    "/transfer/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/transfer/page.js"
+    ],
+    "/transfer/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/transfer/layout.js"
     ],
     "/features/page": [
       "static/chunks/webpack.js",
@@ -36,15 +51,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/features/layout.js"
     ],
-    "/transfer/page": [
+    "/ai-assistant/layout": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/transfer/page.js"
-    ],
-    "/transfer/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/transfer/layout.js"
+      "static/chunks/app/ai-assistant/layout.js"
     ]
   }
 }

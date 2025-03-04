@@ -101,11 +101,12 @@ function NavbarContent() {
               >
                 Features
               </Link>
-
               <Link
-                href="/chats"
+                href="/ai-assistant"
                 className="text-gray-700 hover:text-blue-500"
-              ></Link>
+              >
+                Call someone with AI (beta)
+              </Link>
               <Link
                 href="/dial"
                 className="bg-green-500 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-green-600"
@@ -190,11 +191,11 @@ function NavbarContent() {
                 Buy a Number
               </Link>
               <Link
-                href="/chats"
+                href="/ai-assistant"
                 className="text-gray-700 hover:text-blue-500 py-2"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                Chats
+                AI Assistant
               </Link>
               <Link
                 href="/dial"
