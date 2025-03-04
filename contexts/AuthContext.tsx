@@ -9,6 +9,8 @@ type AuthContextType = {
   user: User | null;
   signOut: () => Promise<void>;
   loading: boolean;
+  signIn: (email: string, password: string) => Promise<any>;
+  signUp: (email: string, password: string) => Promise<any>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -40,6 +42,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Add sign in function
+  const signIn = async (email: string, password: string) => {
+    return supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+  };
+
+  // Add sign up function
+  const signUp = async (email: string, password: string) => {
+    return supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          email_confirmed: true
+        }
+      }
+    });
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
   };
@@ -49,6 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     signOut,
     loading,
+    signIn,
+    signUp
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

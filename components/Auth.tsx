@@ -9,41 +9,58 @@ interface AuthProps {
 }
 
 export default function Auth({ onSuccess }: AuthProps) {
-  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setMessage('');
-    
+
     try {
       if (isSignUp) {
-        // Sign up
-        const { error } = await supabase.auth.signUp({
+        // Sign up the user with auto-confirmation enabled
+        const { error: signUpError } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            // This is the key part - we're setting emailRedirectTo
+            // but we'll handle the sign-in immediately without waiting for confirmation
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            data: {
+              email_confirmed: true // Add custom user data indicating email is confirmed
+            }
+          }
         });
         
-        if (error) throw error;
-        setMessage('Check your email for the confirmation link!');
+        if (signUpError) throw signUpError;
+        
+        // Immediately sign in the user without waiting for email confirmation
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (signInError) throw signInError;
+        
+        if (onSuccess) onSuccess();
       } else {
-        // Sign in
-        const { error } = await supabase.auth.signInWithPassword({
+        // Regular sign in
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
-          password,
+          password
         });
         
-        if (error) throw error;
+        if (signInError) throw signInError;
         
-        // Call the success callback if provided
         if (onSuccess) onSuccess();
       }
-    } catch (error: any) {
-      setMessage(error.message || 'An error occurred');
+    } catch (err: any) {
+      console.error('Authentication error:', err);
+      setError(err.message || 'An error occurred during authentication');
     } finally {
       setLoading(false);
     }
@@ -60,7 +77,13 @@ export default function Auth({ onSuccess }: AuthProps) {
         {isSignUp ? 'Create an Account' : 'Sign In to Zkypee'}
       </h2>
       
-      <form onSubmit={handleAuth}>
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
+      
+      <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
             Email
@@ -89,27 +112,21 @@ export default function Auth({ onSuccess }: AuthProps) {
           />
         </div>
         
-        {message && (
-          <div className={`p-3 mb-4 rounded ${message.includes('error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-            {message}
-          </div>
-        )}
-        
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          className="w-full py-2 px-4 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300"
         >
-          {loading ? 'Loading...' : isSignUp ? 'Sign Up' : 'Sign In'}
+          {loading ? 'Processing...' : isSignUp ? 'Sign Up' : 'Sign In'}
         </button>
       </form>
       
       <div className="mt-4 text-center">
         <button
           onClick={() => setIsSignUp(!isSignUp)}
-          className="text-sm text-blue-500 hover:underline"
+          className="text-blue-500 hover:text-blue-700 text-sm"
         >
-          {isSignUp ? 'Already have an account? Sign in' : 'Need an account? Sign up'}
+          {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
         </button>
       </div>
     </motion.div>

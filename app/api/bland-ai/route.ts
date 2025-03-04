@@ -189,7 +189,7 @@ export async function GET(request: Request) {
 }
 
 // Helper function to extract a simple summary from transcript
-function extractSummary(transcript) {
+function extractSummary(transcript: string | null): string | null {
   if (!transcript) return null;
   
   // Very simple summary extraction - just the first few sentences
