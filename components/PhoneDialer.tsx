@@ -29,8 +29,9 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   } = useTwilio();
 
   const [callDuration, setCallDuration] = useState(0);
-  const [durationInterval, setDurationInterval] =
-    useState<NodeJS.Timeout | null>(null);
+  const [durationInterval, setDurationInterval] = useState<number | undefined>(
+    undefined
+  );
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [twilioNumber, setTwilioNumber] = useState<string | null>(null);
 
@@ -100,18 +101,22 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   useEffect(() => {
     if (isConnected && connection) {
       console.log("Call connected, starting duration timer");
-      const interval = setInterval(() => {
+      const interval = window.setInterval(() => {
         setCallDuration((prev) => prev + 1);
       }, 1000);
       setDurationInterval(interval);
 
       return () => {
-        clearInterval(interval);
+        if (interval) {
+          window.clearInterval(interval);
+        }
       };
     } else if (!isConnected) {
       console.log("Call disconnected, resetting duration");
-      clearInterval(durationInterval);
-      setDurationInterval(null);
+      if (durationInterval) {
+        window.clearInterval(durationInterval);
+      }
+      setDurationInterval(undefined);
       setCallDuration(0);
     }
   }, [isConnected, connection]);
@@ -120,7 +125,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   useEffect(() => {
     return () => {
       if (durationInterval) {
-        clearInterval(durationInterval);
+        window.clearInterval(durationInterval);
       }
     };
   }, [durationInterval]);
@@ -157,7 +162,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     hangUp();
   };
 
-  const formatDuration = (seconds) => {
+  const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs
@@ -165,7 +170,11 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       .padStart(2, "0")}`;
   };
 
-  const handleAICall = async (prompt, phoneNumber, voice = "cailee") => {
+  const handleAICall = async (
+    prompt: string,
+    phoneNumber: string,
+    voice: string = "cailee"
+  ) => {
     try {
       const response = await fetch("/api/bland-ai", {
         method: "POST",
