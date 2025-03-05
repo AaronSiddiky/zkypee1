@@ -8,6 +8,7 @@ import Auth from "../components/Auth";
 import CreditBalance from "../components/CreditBalance";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import InactivityWarningModal from "../components/InactivityWarningModal";
 
 function NavbarContent() {
   const { user, loading, signOut } = useAuth();
@@ -325,6 +326,7 @@ export default function ClientLayout({
     <AuthProvider>
       <TwilioProvider>
         <NavbarContent />
+        <InactivityWarningModal />
         {children}
       </TwilioProvider>
     </AuthProvider>
