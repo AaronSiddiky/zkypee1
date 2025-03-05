@@ -1,8 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
+import { Session, User } from "@supabase/supabase-js";
 
 type AuthContextType = {
   session: Session | null;
@@ -14,6 +14,15 @@ type AuthContextType = {
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Helper function to get the base URL with a fallback to window.location.origin
+function getBaseUrl() {
+  if (typeof window !== "undefined") {
+    // Use environment variable if available, otherwise fallback to window.location.origin
+    return process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_BASE_URL || "";
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -29,13 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
     return () => {
       subscription.unsubscribe();
@@ -46,7 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     return supabase.auth.signInWithPassword({
       email,
-      password
+      password,
     });
   };
 
@@ -56,11 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${getBaseUrl()}/auth/callback`,
         data: {
-          email_confirmed: true
-        }
-      }
+          email_confirmed: true,
+        },
+      },
     });
   };
 
@@ -74,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     loading,
     signIn,
-    signUp
+    signUp,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -83,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
-} 
+}

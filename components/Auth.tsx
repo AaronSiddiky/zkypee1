@@ -4,6 +4,15 @@ import React, { useState } from "react";
 import { supabase } from "../lib/supabase";
 import { motion } from "framer-motion";
 
+// Helper function to get the base URL with a fallback to window.location.origin
+function getBaseUrl() {
+  if (typeof window !== "undefined") {
+    // Use environment variable if available, otherwise fallback to window.location.origin
+    return process.env.NEXT_PUBLIC_BASE_URL || window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_BASE_URL || "";
+}
+
 interface AuthProps {
   onSuccess?: () => void;
 }
@@ -27,9 +36,8 @@ export default function Auth({ onSuccess }: AuthProps) {
           email,
           password,
           options: {
-            // This is the key part - we're setting emailRedirectTo
-            // but we'll handle the sign-in immediately without waiting for confirmation
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            // Use the configured base URL with the callback path
+            emailRedirectTo: `${getBaseUrl()}/auth/callback`,
             data: {
               email_confirmed: true, // Add custom user data indicating email is confirmed
             },
@@ -71,10 +79,14 @@ export default function Auth({ onSuccess }: AuthProps) {
     setLoading(true);
 
     try {
+      console.log(
+        "Signing in with Google, redirect URL:",
+        `${getBaseUrl()}/auth/callback`
+      );
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${getBaseUrl()}/auth/callback`,
         },
       });
 
