@@ -48,7 +48,7 @@ export default function HomePage() {
               </AnimatePresence>
             </h1>
             <p className="text-lg sm:text-xl mb-6 sm:mb-8">
-              Transfer your Skype Credits and enjoy cheaper rates today
+              Call any landline or phone with the cheapest rates available
             </p>
 
             {/* Cost indicator */}
