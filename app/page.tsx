@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneContent from "../components/PhoneContent";
-import CountdownTimer from "../components/CountdownTimer";
 import CountryFlagRotator from "../components/CountryFlagRotator";
 
 export default function HomePage() {
@@ -61,20 +60,6 @@ export default function HomePage() {
             <div className="mb-4">
               <CountryFlagRotator />
             </div>
-
-            {/* Countdown Timer */}
-            <AnimatePresence>
-              {showZkypee && (
-                <motion.div
-                  className="mb-6 w-full flex justify-center lg:justify-start"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                >
-                  <CountdownTimer />
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center lg:justify-start">
               <Link

@@ -149,12 +149,6 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       {user && (
         <div className="mb-4 flex justify-between items-center">
           <CreditBalance showBuyButton={true} />
-          <Link
-            href="/credits/history"
-            className="text-sm text-blue-600 hover:text-blue-800"
-          >
-            View History
-          </Link>
         </div>
       )}
 
