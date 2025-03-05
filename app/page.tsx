@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneContent from "../components/PhoneContent";
 import CountdownTimer from "../components/CountdownTimer";
+import CountryFlagRotator from "../components/CountryFlagRotator";
 
 export default function HomePage() {
   const [showZkypee, setShowZkypee] = useState(false);
@@ -51,6 +52,16 @@ export default function HomePage() {
               Transfer your Skype Credits and enjoy cheaper rates today
             </p>
 
+            {/* Cost indicator */}
+            <p className="text-red-600 font-bold text-lg sm:text-xl mb-4">
+              Only $0.15 per minute!
+            </p>
+
+            {/* Country Flag Rotator */}
+            <div className="mb-4">
+              <CountryFlagRotator />
+            </div>
+
             {/* Countdown Timer */}
             <AnimatePresence>
               {showZkypee && (
@@ -67,7 +78,7 @@ export default function HomePage() {
 
             <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center lg:justify-start">
               <Link
-                href="/signup"
+                href="/dial"
                 className="bg-blue-500 text-white px-8 py-3 rounded-full text-center"
               >
                 Call anyone anywhere!
