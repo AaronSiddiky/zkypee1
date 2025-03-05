@@ -33,6 +33,13 @@ interface TwilioContextType {
     status: string | null;
     error: string | null;
   };
+  // Add deviceDebugInfo as an alias to debugInfo for backward compatibility
+  deviceDebugInfo: {
+    lastAction: string;
+    timestamp: number;
+    deviceState: string | null;
+    error: string | null;
+  };
   connection: any;
   callDuration: number;
   estimatedCost: number;
@@ -365,6 +372,13 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     initializeDevice,
     testConnection,
     debugInfo,
+    // Map deviceDebugInfo to our existing debugInfo for backward compatibility
+    deviceDebugInfo: {
+      lastAction: debugInfo.lastAction,
+      timestamp: debugInfo.timestamp,
+      deviceState: debugInfo.status,
+      error: debugInfo.error,
+    },
     connection,
     callDuration,
     estimatedCost,
