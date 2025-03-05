@@ -223,7 +223,10 @@ export default function Auth({ onSuccess }: AuthProps) {
             <div className="flex justify-center">
               <ReCAPTCHA
                 ref={recaptchaRef}
-                sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                sitekey={
+                  process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
+                  "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+                }
                 onChange={handleCaptchaChange}
               />
             </div>
