@@ -11,18 +11,18 @@ interface TestConnectionButtonProps {
 export default function TestConnectionButton({
   className = "",
 }: TestConnectionButtonProps) {
-  const { testConnection, device, initializeDevice } = useTwilio();
+  const { testConnection, initializeDevice, isReady, debugInfo } = useTwilio();
   const { user, loading: authLoading } = useAuth();
   const [status, setStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [details, setDetails] = useState<any>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  // Function to safely get device state
+  // Function to safely get device state from debugInfo
   const getDeviceState = (): string => {
-    if (!device) return "null";
+    if (!debugInfo) return "null";
     try {
-      return (device as any).status ? (device as any).status() : "unknown";
+      return debugInfo.status || "unknown";
     } catch (err: any) {
       return `error_getting_status: ${err.message || "unknown error"}`;
     }
@@ -66,9 +66,9 @@ export default function TestConnectionButton({
 
       if (result && result.success) {
         setStatus(
-          `Connection test successful! Device status: ${
-            result.deviceStatus
-          }, Ready: ${result.isReady ? "Yes" : "No"}`
+          `Connection test successful! Status: ${getDeviceState()}, Ready: ${
+            isReady ? "Yes" : "No"
+          }`
         );
         return true;
       } else if (result) {
@@ -77,17 +77,8 @@ export default function TestConnectionButton({
         console.error("Connection test failed:", errorMessage);
 
         // If device is null, suggest initialization
-        if (
-          result.deviceStatus === "null" ||
-          result.deviceStatus === "no_device"
-        ) {
+        if (getDeviceState() === "null" || getDeviceState() === "unknown") {
           setStatus(`Device not initialized. Try initializing the device.`);
-          return false;
-        }
-
-        // If device is in destroyed state, suggest recreation
-        if (result.deviceStatus === "destroyed") {
-          setStatus(`Device is in destroyed state. Try reinitializing.`);
           return false;
         }
 
@@ -221,6 +212,34 @@ export default function TestConnectionButton({
           )}
         </div>
       )}
+
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-2">Device Status</h2>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-gray-100 p-2 rounded">
+            <span className="font-medium">Ready:</span> {isReady ? "✅" : "❌"}
+          </div>
+          <div className="bg-gray-100 p-2 rounded">
+            <span className="font-medium">Connecting:</span>{" "}
+            {isLoading ? "✅" : "❌"}
+          </div>
+          <div className="bg-gray-100 p-2 rounded">
+            <span className="font-medium">Connected:</span>{" "}
+            {debugInfo && debugInfo.status === "connected" ? "✅" : "❌"}
+          </div>
+          <div className="bg-gray-100 p-2 rounded">
+            <span className="font-medium">Last Action:</span>{" "}
+            {debugInfo && debugInfo.lastAction}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold mb-2">Debug Info</h2>
+        <pre className="bg-gray-100 p-4 rounded overflow-auto max-h-60">
+          {JSON.stringify(debugInfo, null, 2)}
+        </pre>
+      </div>
     </div>
   );
 }
