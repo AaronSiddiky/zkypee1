@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Create success and cancel URLs
-      const origin = request.headers.get("origin") || "http://localhost:3000";
+      const origin = request.headers.get("origin") || "http://zkypee.com";
       const successUrl = `${origin}/credits/success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${origin}/credits/cancel`;
 
