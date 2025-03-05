@@ -36,30 +36,46 @@ export async function GET(request: NextRequest) {
       }
 
       // Verify the token
-      const { data: userData, error } = await supabase.auth.getUser(token);
-      tokenError = error;
+      try {
+        const { data: userData, error } = await supabase.auth.getUser(token);
+        tokenError = error;
 
-      if (error) {
-        console.error("Token verification error:", error);
-        // Not returning error yet, we'll try session cookie as fallback
-      }
+        if (error) {
+          console.error("Token verification error:", error);
+          // If this is a rate limit error, we'll try the session cookie instead
+          if (error.message && error.message.includes("rate limit")) {
+            console.log(
+              "Rate limit hit during token verification, trying session cookie"
+            );
+          } else {
+            // Not returning error yet, we'll try session cookie as fallback
+          }
+        }
 
-      if (userData?.user) {
-        console.log("User verified from token:", userData.user.id);
-        user = userData.user;
-      } else {
-        console.log("No user data returned from token verification");
+        if (userData?.user) {
+          console.log("User verified from token:", userData.user.id);
+          user = userData.user;
+        } else {
+          console.log("No user data returned from token verification");
+        }
+      } catch (verifyError) {
+        console.error("Exception during token verification:", verifyError);
+        // Will fall back to session cookie
       }
     }
 
     // If no user from token, try to get user from session cookie
     if (!user) {
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Session data from cookie:", !!sessionData?.session);
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        console.log("Session data from cookie:", !!sessionData?.session);
 
-      if (sessionData?.session?.user) {
-        user = sessionData.session.user;
-        console.log("User authenticated from session cookie:", user.id);
+        if (sessionData?.session?.user) {
+          user = sessionData.session.user;
+          console.log("User authenticated from session cookie:", user.id);
+        }
+      } catch (sessionError) {
+        console.error("Error getting session from cookie:", sessionError);
       }
     }
 
@@ -67,6 +83,16 @@ export async function GET(request: NextRequest) {
     if (!user) {
       console.log("No authenticated user found");
       const errorDetails = tokenError ? ` (${tokenError.message})` : "";
+      // If there was a rate limit error, suggest waiting
+      if (tokenError?.message?.includes("rate limit")) {
+        return NextResponse.json(
+          {
+            error: `Rate limit exceeded. Please wait a moment and try again.`,
+            rateLimit: true,
+          },
+          { status: 429 }
+        );
+      }
       return NextResponse.json(
         { error: `You must be signed in to view credits${errorDetails}` },
         { status: 401 }

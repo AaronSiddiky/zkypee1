@@ -68,56 +68,36 @@ export default function CreditsPage() {
         return;
       }
 
-      // Try to refresh the session first
+      // Try to refresh the session only once per fetch
+      let refreshedToken = null;
       try {
         const { data, error } = await supabase.auth.refreshSession();
         if (error) {
-          console.log("Failed to refresh session:", error.message);
+          if (error.message.includes("rate limit")) {
+            console.log("Rate limit hit, skipping refresh");
+          } else {
+            console.log("Failed to refresh session:", error.message);
+          }
         } else if (data.session) {
           console.log("Session refreshed successfully");
-          // We can't modify the session from useAuth directly, so we'll use the refreshed token
-          console.log(
-            "Fetching credit balance with refreshed token:",
-            data.session.access_token.substring(0, 10) + "..."
-          );
-
-          // Fetch credit balance with refreshed auth token
-          const refreshedResponse = await fetch("/api/credits/balance", {
-            method: "GET",
-            headers: {
-              Authorization: `Bearer ${data.session.access_token}`,
-              "Content-Type": "application/json",
-            },
-            cache: "no-store",
-          });
-
-          const refreshedData = await refreshedResponse.json();
-
-          if (!refreshedResponse.ok) {
-            throw new Error(
-              refreshedData.error ||
-                "Failed to fetch credit balance with refreshed token"
-            );
-          }
-
-          setCreditBalance(refreshedData.creditBalance);
-          setIsLoading(false);
-          return; // Exit early as we've already handled the response
+          refreshedToken = data.session.access_token;
         }
       } catch (refreshError) {
         console.error("Error refreshing session:", refreshError);
       }
 
+      const token = refreshedToken || session.access_token;
+
       console.log(
-        "Fetching credit balance with original session token:",
-        session.access_token.substring(0, 10) + "..."
+        "Fetching credit balance with token:",
+        token.substring(0, 10) + "..."
       );
 
-      // Fetch credit balance with the original auth token as fallback
+      // Fetch credit balance with auth token
       const response = await fetch("/api/credits/balance", {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         cache: "no-store", // Add cache busting

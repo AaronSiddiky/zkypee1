@@ -1,7 +1,5 @@
 {
-  "/credits/page": "app/credits/page.js",
+  "/api/twilio/token/route": "app/api/twilio/token/route.js",
   "/page": "app/page.js",
-  "/dial/page": "app/dial/page.js",
-  "/ai-assistant/page": "app/ai-assistant/page.js",
-  "/transfer/page": "app/transfer/page.js"
+  "/api/credits/balance/route": "app/api/credits/balance/route.js"
 }
