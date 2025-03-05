@@ -1,10 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import twilio from "twilio";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import rateLimit from "@/lib/rate-limit";
 
-// Define CORS headers
+// Create a rate limiter (5 requests per minute per IP)
+const tokenLimiter = rateLimit({
+  interval: 60 * 1000, // 1 minute
+  uniqueTokenPerInterval: 500, // Max 500 users per interval
+  tokensPerInterval: 5, // 5 requests per interval
+});
+
+// More restrictive CORS headers
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*", // Allow all origins for now
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Origin":
+    process.env.NEXT_PUBLIC_BASE_URL || "https://yourdomain.com", // Only allow your domain
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
@@ -13,31 +24,55 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function POST(request: Request) {
+// Map to store tokens by user ID (for server-side use only)
+// In production, you'd use a more persistent and secure storage
+const userTokenCache = new Map<
+  string,
+  {
+    token: string;
+    expiry: number;
+  }
+>();
+
+/**
+ * Generates a token for a user but does NOT return it
+ * Instead, it stores the token server-side for use by other endpoints
+ */
+export async function POST(request: NextRequest) {
   try {
-    console.log("Token API route called");
+    console.log("Token generation endpoint called");
 
-    // Get identity from request body
-    let identity;
+    // Apply rate limiting based on IP
+    const ip = request.ip || "anonymous";
     try {
-      const body = await request.json();
-      identity = body.identity;
-      console.log("Received identity:", identity);
-    } catch (parseError) {
-      console.error("Error parsing request body:", parseError);
+      await tokenLimiter.check(5, ip);
+    } catch (error) {
+      console.error("Rate limit exceeded for IP:", ip);
       return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400, headers: corsHeaders }
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: corsHeaders }
       );
     }
 
-    if (!identity) {
-      console.error("No identity provided in request");
+    // Initialize Supabase client
+    const supabase = createServerComponentClient({ cookies });
+
+    // Check authentication
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session || !session.user) {
+      console.error("Unauthorized token request - no session");
       return NextResponse.json(
-        { error: "Identity is required" },
-        { status: 400, headers: corsHeaders }
+        { error: "Unauthorized - Authentication required" },
+        { status: 401, headers: corsHeaders }
       );
     }
+
+    // Get user ID from authenticated user
+    const userId = session.user.id;
+    console.log("Authenticated user ID:", userId);
 
     // Check if Twilio credentials are set
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -45,156 +80,80 @@ export async function POST(request: Request) {
     const apiSecret = process.env.TWILIO_API_SECRET;
     const twimlAppSid = process.env.TWILIO_TWIML_APP_SID;
 
-    // Log credential status (without revealing actual values)
-    console.log("Twilio credentials check:", {
-      accountSid: accountSid
-        ? `Set (${accountSid.substring(0, 4)}...)`
-        : "Missing",
-      apiKey: apiKey ? `Set (${apiKey.substring(0, 4)}...)` : "Missing",
-      apiSecret: apiSecret ? "Set (hidden)" : "Missing",
-      twimlAppSid: twimlAppSid
-        ? `Set (${twimlAppSid.substring(0, 4)}...)`
-        : "Missing",
-    });
-
     if (!accountSid || !apiKey || !apiSecret || !twimlAppSid) {
-      console.error("Missing Twilio credentials:", {
-        accountSid: accountSid ? "Set" : "Missing",
-        apiKey: apiKey ? "Set" : "Missing",
-        apiSecret: apiSecret ? "Set" : "Missing",
-        twimlAppSid: twimlAppSid ? "Set" : "Missing",
-      });
+      console.error("Missing Twilio credentials");
       return NextResponse.json(
-        { error: "Missing Twilio credentials" },
+        { error: "Server configuration error" },
         { status: 500, headers: corsHeaders }
       );
     }
 
-    // Create an access token
-    console.log("Creating Twilio access token");
-    const AccessToken = twilio.jwt.AccessToken;
-    const VoiceGrant = AccessToken.VoiceGrant;
-
-    // Create a Voice grant for this token
-    const voiceGrant = new VoiceGrant({
-      outgoingApplicationSid: twimlAppSid,
-      incomingAllow: true,
-    });
-
-    // Create an access token which we will sign and return to the client
     try {
-      console.log("Initializing AccessToken with:", {
-        accountSid: `${accountSid.substring(0, 4)}...`,
-        apiKey: `${apiKey.substring(0, 4)}...`,
-        identity,
+      // Generate the token
+      const AccessToken = twilio.jwt.AccessToken;
+      const VoiceGrant = AccessToken.VoiceGrant;
+
+      // Create Voice grant
+      const voiceGrant = new VoiceGrant({
+        outgoingApplicationSid: twimlAppSid,
+        incomingAllow: true,
       });
 
-      // Set token TTL to 1 hour (3600 seconds)
+      // Create token with 15-minute TTL
       const token = new AccessToken(accountSid, apiKey, apiSecret, {
-        identity,
-        ttl: 3600,
+        identity: userId,
+        ttl: 900, // 15 minutes
       });
 
-      // Add the voice grant to our token
+      // Add the voice grant
       token.addGrant(voiceGrant);
 
-      // Serialize the token to a JWT string
+      // Generate the token string
       const tokenString = token.toJwt();
-      console.log("Token generated successfully, length:", tokenString.length);
+      console.log("Token generated successfully for user:", userId);
 
+      // Store token in server-side cache
+      userTokenCache.set(userId, {
+        token: tokenString,
+        expiry: Date.now() + 900 * 1000, // 15 minutes in ms
+      });
+
+      // Return success but WITHOUT the token
       return NextResponse.json(
-        { token: tokenString },
+        {
+          success: true,
+          message: "Twilio capabilities initialized",
+          // No token is returned to the client
+        },
         { headers: corsHeaders }
       );
     } catch (tokenError: any) {
       console.error("Error creating token:", tokenError);
-      console.error("Error details:", tokenError.stack);
 
-      // Check for specific error types
-      let errorMessage = "Failed to create token";
-      let errorDetails = tokenError.message;
-
-      if (tokenError.message.includes("API Key")) {
-        errorMessage = "Invalid Twilio API Key";
-        errorDetails = "Please check your TWILIO_API_KEY environment variable";
-      } else if (tokenError.message.includes("API Secret")) {
-        errorMessage = "Invalid Twilio API Secret";
-        errorDetails =
-          "Please check your TWILIO_API_SECRET environment variable";
-      } else if (tokenError.message.includes("Account SID")) {
-        errorMessage = "Invalid Twilio Account SID";
-        errorDetails =
-          "Please check your TWILIO_ACCOUNT_SID environment variable";
-      }
+      let errorMessage = "Failed to initialize Twilio capabilities";
 
       return NextResponse.json(
-        {
-          error: errorMessage,
-          message: tokenError.message,
-          details: errorDetails,
-        },
+        { error: errorMessage },
         { status: 500, headers: corsHeaders }
       );
     }
   } catch (error: any) {
-    console.error("Error in token API route:", error);
-    console.error("Error stack:", error.stack);
+    console.error("Error in token endpoint:", error);
     return NextResponse.json(
-      {
-        error: "Failed to generate token",
-        message: error.message,
-        details: error.stack,
-      },
+      { error: "Server error" },
       { status: 500, headers: corsHeaders }
     );
   }
 }
 
-export async function GET() {
-  try {
-    // Check if Twilio credentials are set
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const apiKey = process.env.TWILIO_API_KEY;
-    const apiSecret = process.env.TWILIO_API_SECRET;
-    const twimlAppSid = process.env.TWILIO_TWIML_APP_SID;
+// Export the token getter for other server components to use
+export function getTokenForUser(userId: string): string | null {
+  const cachedData = userTokenCache.get(userId);
 
-    // Verify all required credentials are present
-    if (!accountSid || !apiKey || !apiSecret || !twimlAppSid) {
-      console.error("Missing Twilio credentials");
-      return NextResponse.json(
-        { error: "Missing Twilio credentials" },
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    // Generate a token with Twilio credentials
-    const AccessToken = twilio.jwt.AccessToken;
-    const VoiceGrant = AccessToken.VoiceGrant;
-
-    // Create a Voice grant for this token
-    const voiceGrant = new VoiceGrant({
-      outgoingApplicationSid: twimlAppSid,
-      incomingAllow: true,
-    });
-
-    // Create an access token which we will sign and return to the client
-    const token = new AccessToken(accountSid, apiKey, apiSecret, {
-      identity: "anonymous-user", // Provide a default identity
-      ttl: 3600,
-    });
-
-    // Add the grant to the token
-    token.addGrant(voiceGrant);
-
-    // Generate the token string
-    const tokenString = token.toJwt();
-
-    return NextResponse.json({ token: tokenString }, { headers: corsHeaders });
-  } catch (error) {
-    console.error("Error generating Twilio token:", error);
-    return NextResponse.json(
-      { error: "Failed to generate token" },
-      { status: 500, headers: corsHeaders }
-    );
+  // If no token or token expired, return null
+  if (!cachedData || cachedData.expiry < Date.now()) {
+    return null;
   }
+
+  return cachedData.token;
 }

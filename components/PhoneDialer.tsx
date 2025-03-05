@@ -269,13 +269,12 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   );
   const [showCountryCodes, setShowCountryCodes] = useState(false);
   const {
-    device,
     isReady,
     isConnecting,
     isConnected,
     error,
     connection,
-    setupDevice,
+    initializeDevice,
     makeCall,
     hangUp,
     callDuration,
@@ -324,14 +323,14 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []); // Add dependencies
 
-  // Initialize Twilio device when user is available
+  // Initialize Twilio when user is available
   useEffect(() => {
-    if (user && !device) {
-      console.log("User available, setting up device");
-      setupDevice();
+    if (user) {
+      console.log("User available, initializing Twilio");
+      initializeDevice();
       fetchTwilioNumber();
     }
-  }, [user, device, setupDevice]);
+  }, [user, initializeDevice]);
 
   // Fetch the Twilio phone number
   const fetchTwilioNumber = async () => {

@@ -1,8 +1,4 @@
 {
-  "contexts/TwilioContext.tsx -> @supabase/supabase-js": {
-    "id": "contexts/TwilioContext.tsx -> @supabase/supabase-js",
-    "files": []
-  },
   "node_modules/@supabase/auth-js/dist/module/lib/helpers.js -> @supabase/node-fetch": {
     "id": "node_modules/@supabase/auth-js/dist/module/lib/helpers.js -> @supabase/node-fetch",
     "files": []

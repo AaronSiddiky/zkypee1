@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import twilio from "twilio";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import { getTokenForUser } from "../token/route";
 
-// Define CORS headers
+// CORS headers
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Origin":
+    process.env.NEXT_PUBLIC_BASE_URL || "https://yourdomain.com",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
@@ -13,66 +17,97 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function POST(request: Request) {
+/**
+ * Proxy API for making voice calls
+ * Uses server-side tokens without exposing them to the client
+ */
+export async function POST(request: NextRequest) {
   try {
-    console.log("Voice API route called - SIMPLIFIED");
+    // Initialize Supabase client for authentication
+    const supabase = createServerComponentClient({ cookies });
 
-    // Create a simple TwiML response
-    const twiml = new twilio.twiml.VoiceResponse();
+    // Check authentication
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    // Get form data with minimal processing
-    const formData = await request.formData();
-    const To = formData.get("To") as string;
-
-    if (To) {
-      console.log(`Dialing number: ${To}`);
-
-      // Get the Twilio phone number from env
-      const twilioPhoneNumber =
-        process.env.TWILIO_PHONE_NUMBER || "+18574129969";
-
-      // Create a simple dial instruction
-      const dial = twiml.dial({
-        callerId: twilioPhoneNumber,
-        timeout: 20,
-      });
-
-      // Format the number if needed
-      let formattedNumber = To;
-      if (!To.startsWith("+")) {
-        formattedNumber = `+1${To}`;
-      }
-
-      // Add the number to dial
-      dial.number(formattedNumber);
-    } else {
-      // Simple response if no number provided
-      twiml.say("Thanks for calling!");
+    if (!session || !session.user) {
+      console.error("Unauthorized voice call request - no session");
+      return NextResponse.json(
+        { error: "Unauthorized - Authentication required" },
+        { status: 401, headers: corsHeaders }
+      );
     }
 
-    // Generate the TwiML response
-    const twimlString = twiml.toString();
-    console.log("TwiML response:", twimlString);
+    // Get user ID
+    const userId = session.user.id;
 
-    // Return the response immediately
-    return new NextResponse(twimlString, {
-      headers: {
-        "Content-Type": "text/xml",
-        ...corsHeaders,
-      },
+    // Get request body
+    const { phoneNumber } = await request.json();
+
+    if (!phoneNumber) {
+      return NextResponse.json(
+        { error: "Phone number is required" },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Get user's token from server-side cache
+    const token = getTokenForUser(userId);
+
+    if (!token) {
+      // Generate a new token if needed
+      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/twilio/token`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          // Include the session cookie for authentication
+          Cookie: request.headers.get("cookie") || "",
+        },
+      });
+
+      // Try to get the token again
+      const newToken = getTokenForUser(userId);
+
+      if (!newToken) {
+        return NextResponse.json(
+          { error: "Could not initialize Twilio capabilities" },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // Initialize Twilio client with environment credentials
+    const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+    const authToken = process.env.TWILIO_AUTH_TOKEN!;
+    const twilioClient = twilio(accountSid, authToken);
+
+    // Check credit balance or other prerequisites here
+
+    // Make the call using Twilio's REST API directly
+    const call = await twilioClient.calls.create({
+      to: phoneNumber,
+      from: process.env.TWILIO_PHONE_NUMBER!, // Your Twilio phone number
+      url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/twilio/twiml`,
+      statusCallback: `${process.env.NEXT_PUBLIC_BASE_URL}/api/twilio/status-callback`,
+      statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
+      statusCallbackMethod: "POST",
     });
-  } catch (error) {
-    console.error("Error in voice route:", error);
 
-    // Create a simple error response
-    const errorTwiml = new twilio.twiml.VoiceResponse();
-    errorTwiml.say("An error occurred with your call.");
-
-    return new NextResponse(errorTwiml.toString(), {
-      headers: {
-        "Content-Type": "text/xml",
-        ...corsHeaders,
+    return NextResponse.json(
+      {
+        success: true,
+        callSid: call.sid,
+        status: call.status,
       },
-    });
+      { headers: corsHeaders }
+    );
+  } catch (error: any) {
+    console.error("Error in voice call API:", error);
+
+    return NextResponse.json(
+      { error: "Failed to initiate call" },
+      { status: 500, headers: corsHeaders }
+    );
   }
 }

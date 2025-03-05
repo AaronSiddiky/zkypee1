@@ -1,17 +1,22 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
+import dynamic from "next/dynamic";
 import type { Metadata, Viewport } from "next";
-import MaintenanceScreen from "./MaintenanceScreen";
+
+// Import ClientLayout with dynamic import to avoid webpack issues
+const ClientLayout = dynamic(() => import("./client-layout"), {
+  ssr: false,
+});
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
     template: "%s | Zkypee",
-    default: "Zkypee | Under Maintenance",
+    default: "Zkypee | Connect with Anyone, Anywhere",
   },
   description:
-    "Zkypee is currently under maintenance. We will be back within the day.",
+    "Make high-quality voice and video calls to anyone in the world with Zkypee.",
 };
 
 // Separate viewport export
@@ -49,8 +54,7 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        {/* Maintenance screen is the only thing shown */}
-        <MaintenanceScreen />
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

@@ -221,7 +221,7 @@ export async function getUserCreditBalance(
     // First check if the user exists
     const { data: existingUser, error: checkError } = await supabase
       .from("users")
-      .select("id, credit_balance")
+      .select("id, credit_balance, email")
       .eq("id", userId);
 
     if (checkError) {
@@ -231,12 +231,40 @@ export async function getUserCreditBalance(
       );
     }
 
-    // If user doesn't exist, return default 0 credit balance instead of trying to insert
+    // If user doesn't exist, create the user with 204 credits
     if (!existingUser || existingUser.length === 0) {
       console.log(
-        "User not found in public.users table, returning default balance of 0"
+        "User not found in public.users table, creating user with 204 credits"
       );
-      return 0;
+
+      // Get user's email from auth
+      const { data: userData, error: userError } =
+        await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("Error getting user data:", userError);
+        return 204; // Return 204 credits even if we can't get email
+      }
+
+      const email = userData.user?.email || "unknown@example.com";
+
+      // Create the user with 204 credits
+      const { error: insertError } = await supabase.from("users").insert([
+        {
+          id: userId,
+          email: email,
+          credit_balance: 204,
+        },
+      ]);
+
+      if (insertError) {
+        console.error("Error creating user:", insertError);
+        // If we can't create the user, still return 204 credits
+        return 204;
+      }
+
+      console.log("User created successfully with 204 credits");
+      return 204;
     }
 
     // If multiple user records are found (shouldn't happen but let's handle it)
@@ -250,7 +278,7 @@ export async function getUserCreditBalance(
         "Credit balance from first record:",
         existingUser[0].credit_balance
       );
-      return existingUser[0].credit_balance || 0;
+      return existingUser[0].credit_balance || 204;
     }
 
     // User exists (single record), directly return their credit balance
@@ -258,9 +286,10 @@ export async function getUserCreditBalance(
       "Credit balance fetched successfully:",
       existingUser[0].credit_balance
     );
-    return existingUser[0].credit_balance || 0;
+    return existingUser[0].credit_balance || 204;
   } catch (error) {
     console.error("Error in getUserCreditBalance:", error);
-    throw error;
+    // Return 204 credits in case of any error
+    return 204;
   }
 }
