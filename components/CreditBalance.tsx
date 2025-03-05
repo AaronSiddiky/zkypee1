@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 interface CreditBalanceProps {
   showBuyButton?: boolean;
@@ -16,7 +17,7 @@ export default function CreditBalance({
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { session } = useAuth();
+  const { session, user } = useAuth();
 
   useEffect(() => {
     const fetchCreditBalance = async () => {
@@ -25,9 +26,25 @@ export default function CreditBalance({
         setError(null);
 
         // Skip fetching if not authenticated
-        if (!session) {
+        if (!session || !user) {
+          console.log("No session or user available, skipping fetch");
           setIsLoading(false);
+          setError("Please sign in to view credits");
           return;
+        }
+
+        console.log("Attempting to fetch credit balance with auth token...");
+
+        // Try to refresh the session first to ensure a valid token
+        try {
+          const { data, error } = await supabase.auth.refreshSession();
+          if (error) {
+            console.log("Failed to refresh session:", error.message);
+          } else if (data.session) {
+            console.log("Session refreshed successfully");
+          }
+        } catch (refreshError) {
+          console.error("Error refreshing session:", refreshError);
         }
 
         // Fetch credit balance with auth token in header
@@ -36,6 +53,8 @@ export default function CreditBalance({
             Authorization: `Bearer ${session.access_token}`,
           },
           credentials: "include", // Include credentials (cookies) with the request
+          // Add cache busting to prevent stale responses
+          cache: "no-store",
         });
 
         const data = await response.json();
@@ -56,7 +75,7 @@ export default function CreditBalance({
     };
 
     fetchCreditBalance();
-  }, [session]);
+  }, [session, user]);
 
   if (isLoading) {
     return (

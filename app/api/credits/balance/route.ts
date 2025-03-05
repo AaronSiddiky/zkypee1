@@ -19,23 +19,29 @@ export async function GET(request: NextRequest) {
     console.log("Authorization header present:", !!authHeader);
 
     let user = null;
+    let tokenError = null;
 
     if (authHeader && authHeader.startsWith("Bearer ")) {
       // Extract the token
       const token = authHeader.split(" ")[1];
       console.log("Token extracted, verifying...");
 
-      // Verify the token
-      const { data: userData, error: tokenError } = await supabase.auth.getUser(
-        token
-      );
-
-      if (tokenError) {
-        console.error("Token verification error:", tokenError);
+      // Check if token is empty or malformed
+      if (!token || token === "undefined" || token === "null") {
+        console.error("Invalid token format:", token);
         return NextResponse.json(
-          { error: "Unauthorized - Invalid token" },
+          { error: "Unauthorized - Invalid token format" },
           { status: 401 }
         );
+      }
+
+      // Verify the token
+      const { data: userData, error } = await supabase.auth.getUser(token);
+      tokenError = error;
+
+      if (error) {
+        console.error("Token verification error:", error);
+        // Not returning error yet, we'll try session cookie as fallback
       }
 
       if (userData?.user) {
@@ -57,11 +63,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // If still no user, return unauthorized
+    // If still no user, return unauthorized with detailed message
     if (!user) {
       console.log("No authenticated user found");
+      const errorDetails = tokenError ? ` (${tokenError.message})` : "";
       return NextResponse.json(
-        { error: "Authentication required" },
+        { error: `You must be signed in to view credits${errorDetails}` },
         { status: 401 }
       );
     }
@@ -78,6 +85,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         creditBalance: 0,
         note: "Default balance returned due to error",
+        error:
+          creditError instanceof Error
+            ? creditError.message
+            : String(creditError),
       });
     }
   } catch (error) {

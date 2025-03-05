@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import Auth from "@/components/Auth";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
 
 export default function CreditsPage() {
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
@@ -46,6 +47,8 @@ export default function CreditsPage() {
         });
         setIsLoading(false);
         setError("Please sign in to view your credits");
+        // We'll show the auth UI
+        setShowAuth(true);
       }
     };
 
@@ -65,18 +68,59 @@ export default function CreditsPage() {
         return;
       }
 
+      // Try to refresh the session first
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.log("Failed to refresh session:", error.message);
+        } else if (data.session) {
+          console.log("Session refreshed successfully");
+          // We can't modify the session from useAuth directly, so we'll use the refreshed token
+          console.log(
+            "Fetching credit balance with refreshed token:",
+            data.session.access_token.substring(0, 10) + "..."
+          );
+
+          // Fetch credit balance with refreshed auth token
+          const refreshedResponse = await fetch("/api/credits/balance", {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${data.session.access_token}`,
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+          });
+
+          const refreshedData = await refreshedResponse.json();
+
+          if (!refreshedResponse.ok) {
+            throw new Error(
+              refreshedData.error ||
+                "Failed to fetch credit balance with refreshed token"
+            );
+          }
+
+          setCreditBalance(refreshedData.creditBalance);
+          setIsLoading(false);
+          return; // Exit early as we've already handled the response
+        }
+      } catch (refreshError) {
+        console.error("Error refreshing session:", refreshError);
+      }
+
       console.log(
-        "Fetching credit balance with session token:",
+        "Fetching credit balance with original session token:",
         session.access_token.substring(0, 10) + "..."
       );
 
-      // Fetch credit balance with auth token in header
+      // Fetch credit balance with the original auth token as fallback
       const response = await fetch("/api/credits/balance", {
         method: "GET",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
           "Content-Type": "application/json",
         },
+        cache: "no-store", // Add cache busting
       });
 
       console.log("API response status:", response.status);
