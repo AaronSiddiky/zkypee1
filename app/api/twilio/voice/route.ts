@@ -3,6 +3,16 @@ import twilio from "twilio";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { getTokenForUser } from "@/lib/twilio-token";
+import rateLimit from "@/lib/rate-limit";
+import { hasEnoughCredits } from "@/lib/credits";
+
+// Create a stricter rate limiter for call initiation
+// Only 3 calls per minute per user
+const callRateLimiter = rateLimit({
+  interval: 60 * 1000, // 1 minute
+  uniqueTokenPerInterval: 500, // Max number of users
+  tokensPerInterval: 3, // Only 3 calls per minute
+});
 
 // CORS headers
 const corsHeaders = {
@@ -42,6 +52,20 @@ export async function POST(request: NextRequest) {
     // Get user ID
     const userId = session.user.id;
 
+    // Apply rate limiting based on user ID
+    try {
+      await callRateLimiter.check(3, userId);
+    } catch (error) {
+      console.error("Call rate limit exceeded for user:", userId);
+      return NextResponse.json(
+        {
+          error:
+            "You're making calls too quickly. Please wait a moment before trying again.",
+        },
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
     // Get request body
     const { phoneNumber } = await request.json();
 
@@ -49,6 +73,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Phone number is required" },
         { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Check if user has enough credits for at least a 1-minute call
+    const hasCredits = await hasEnoughCredits(userId, 1);
+    if (!hasCredits) {
+      return NextResponse.json(
+        {
+          error:
+            "Insufficient credits. Please add credits to your account to make calls.",
+        },
+        { status: 403, headers: corsHeaders }
       );
     }
 
@@ -93,6 +129,20 @@ export async function POST(request: NextRequest) {
       statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
       statusCallbackMethod: "POST",
     });
+
+    // Log the call attempt in the database
+    try {
+      await supabase.from("call_logs").insert({
+        user_id: userId,
+        call_sid: call.sid,
+        duration_minutes: 0.01, // Small positive value for initial log
+        credits_used: 0.01, // Small positive value for initial log
+        status: call.status,
+      });
+    } catch (logError) {
+      console.error("Failed to log call:", logError);
+      // Continue execution even if logging fails
+    }
 
     return NextResponse.json(
       {
