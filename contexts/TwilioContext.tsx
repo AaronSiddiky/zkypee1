@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { Device } from "@twilio/voice-sdk";
 import { useAuth } from "./AuthContext";
+import { COST_PER_MINUTE } from "@/lib/stripe";
 
 interface TwilioContextType {
   device: Device | null;
@@ -40,6 +41,12 @@ interface TwilioContextType {
   disconnect: () => void;
   makeAICall: (prompt: string, phoneNumber: string) => Promise<any>;
   getAICallStatus: (callId: string) => Promise<any>;
+  callDuration: number;
+  estimatedCost: number;
+  insufficientCredits: boolean;
+  checkCredits: (durationMinutes: number) => Promise<boolean>;
+  isMuted: boolean;
+  toggleMute: () => void;
 }
 
 const TwilioContext = createContext<TwilioContextType | undefined>(undefined);
@@ -69,6 +76,11 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   const maxRetries = 3;
   const [connection, setConnection] = useState<any>(null);
   const [token, setToken] = useState<string | null>(null);
+  const [callDuration, setCallDuration] = useState(0);
+  const [estimatedCost, setEstimatedCost] = useState(0);
+  const [insufficientCredits, setInsufficientCredits] = useState(false);
+  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Function to update debug info
   const updateDebugInfo = (
@@ -350,6 +362,211 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  // Check if user has enough credits for a call
+  const checkCredits = async (durationMinutes: number = 10) => {
+    try {
+      // Make sure we have a user
+      if (!user) {
+        console.error("Cannot check credits: No user available");
+        setError("Authentication required. Please sign in again.");
+        return false;
+      }
+
+      // Create a supabase client directly using the supabase-js library
+      console.log("Creating direct Supabase client to check credits");
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+      );
+
+      // Query the database directly for the user's credits
+      console.log(
+        `Querying credit balance for user ${user.id} directly from Supabase`
+      );
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("credit_balance")
+        .eq("id", user.id)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user data from Supabase:", userError);
+        setError("Failed to check credit balance");
+        return false;
+      }
+
+      if (!userData) {
+        console.error("No user data found in Supabase");
+        setError("User data not found");
+        return false;
+      }
+
+      const creditBalance = userData.credit_balance || 0;
+      console.log(`Credit balance from Supabase: ${creditBalance}`);
+
+      // Changed: Now we only require a positive balance instead of enough for the full duration
+      const hasPositiveBalance = creditBalance > 0;
+
+      // Calculate how long the user can talk based on their balance
+      const costPerSecond = COST_PER_MINUTE / 60;
+      const secondsAvailable = Math.floor(creditBalance / costPerSecond);
+      const minutesAvailable = (secondsAvailable / 60).toFixed(1);
+
+      // We still set insufficientCredits if balance is 0 or negative
+      setInsufficientCredits(!hasPositiveBalance);
+
+      if (hasPositiveBalance) {
+        console.log(
+          `User has positive balance: ${creditBalance} credits (allows ~${minutesAvailable} minutes of talk time)`
+        );
+        return true;
+      } else {
+        console.log(`No credits available: ${creditBalance}`);
+        setError("Insufficient credits. Please add credits to make calls.");
+        return false;
+      }
+    } catch (err) {
+      console.error("Error checking credits:", err);
+      setError("Failed to check credit balance");
+      return false;
+    }
+  };
+
+  // Start tracking call duration
+  const startDurationTracking = () => {
+    // Reset duration and cost
+    setCallDuration(0);
+    setEstimatedCost(0);
+
+    // Calculate the cost per second
+    const costPerSecond = COST_PER_MINUTE / 60;
+
+    // Start a timer to update the duration every second
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+    }
+
+    durationIntervalRef.current = setInterval(() => {
+      setCallDuration((prevDuration) => {
+        const newDuration = prevDuration + 1;
+        const newCost = parseFloat((newDuration * costPerSecond).toFixed(2));
+        setEstimatedCost(newCost);
+
+        // Check if user has run out of credits
+        // Get the latest credit balance directly from the DOM
+        const creditsElement = document.querySelector(
+          ".credit-balance-display"
+        );
+        let creditBalance = 210; // Fallback default
+
+        if (creditsElement) {
+          const displayedCredits = parseInt(
+            creditsElement.textContent?.replace(/[^0-9]/g, "") || "210",
+            10
+          );
+          creditBalance = displayedCredits;
+        }
+
+        // Check if call cost exceeds available credits
+        if (newCost >= creditBalance) {
+          console.log(
+            `Call ended automatically: Credits exhausted (cost: ${newCost}, balance: ${creditBalance})`
+          );
+          setError("Call ended: Credits exhausted.");
+          stopDurationTracking();
+          hangUp();
+        }
+
+        return newDuration;
+      });
+    }, 1000);
+
+    console.log("Started duration tracking");
+  };
+
+  // Stop tracking call duration
+  const stopDurationTracking = () => {
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+  };
+
+  // Deduct credits after call ends
+  const deductCredits = async () => {
+    try {
+      if (!user) {
+        console.error("Cannot deduct credits: No user available");
+        return;
+      }
+
+      // Calculate call duration in minutes (rounded up to nearest second)
+      const durationMinutes = callDuration / 60;
+      const callCost = estimatedCost;
+
+      console.log(
+        `Deducting credits for call: ${callCost} credits (${durationMinutes.toFixed(
+          2
+        )} minutes)`
+      );
+
+      // Get the current credit balance
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+      );
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("credit_balance")
+        .eq("id", user.id)
+        .single();
+
+      const currentBalance = userData?.credit_balance || 0;
+
+      // Ensure we never go below zero
+      const deductAmount = Math.min(callCost, currentBalance);
+      const newBalance = Math.max(0, currentBalance - deductAmount);
+
+      console.log(
+        `Credit deduction: ${currentBalance} - ${deductAmount} = ${newBalance}`
+      );
+
+      // Update the database with the new balance
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          credit_balance: newBalance,
+        })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Error updating user credits in database:", updateError);
+      } else {
+        console.log(
+          `Credits successfully deducted. New balance: ${newBalance}`
+        );
+      }
+
+      // Record the call in call_logs
+      const { error: logError } = await supabase.from("call_logs").insert({
+        user_id: user.id,
+        duration_minutes: durationMinutes,
+        credits_used: deductAmount,
+        call_sid: connection?.parameters?.CallSid || "unknown",
+        status: "completed",
+      });
+
+      if (logError) {
+        console.error("Error logging call:", logError);
+      }
+    } catch (err) {
+      console.error("Error deducting credits:", err);
+    }
+  };
+
   // Simplified makeCall function
   const makeCall = async (phoneNumber: string) => {
     if (!device) {
@@ -365,6 +582,15 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       if (!isReady) {
         console.log("Device not ready, waiting...");
         setError("Device not ready. Please try again in a moment.");
+        return false;
+      }
+
+      // Check if user has enough credits for at least 10 minutes of call time
+      const hasEnoughCredits = await checkCredits(10);
+      if (!hasEnoughCredits) {
+        setError(
+          "Insufficient credits. Please add more credits to make calls."
+        );
         return false;
       }
 
@@ -384,6 +610,8 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(true);
         setIsConnecting(false);
         setError(null);
+        // Start tracking call duration
+        startDurationTracking();
       });
 
       conn.on("disconnect", () => {
@@ -391,6 +619,9 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(false);
         setIsConnecting(false);
         setConnection(null);
+        // Stop tracking call duration and deduct credits
+        stopDurationTracking();
+        deductCredits();
       });
 
       conn.on("error", (err) => {
@@ -399,6 +630,8 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         setIsConnected(false);
         setIsConnecting(false);
         setConnection(null);
+        // Stop tracking call duration
+        stopDurationTracking();
       });
 
       setConnection(conn);
@@ -418,17 +651,11 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   // Simplified hangUp function
   const hangUp = () => {
     if (connection) {
-      try {
-        connection.disconnect();
-        console.log("Call disconnected");
-      } catch (error) {
-        console.error("Error hanging up call:", error);
-      }
+      connection.disconnect();
+      // Stop tracking call duration and deduct credits
+      stopDurationTracking();
+      deductCredits();
     }
-
-    setIsConnected(false);
-    setIsConnecting(false);
-    setConnection(null);
   };
 
   // Function to test the connection
@@ -657,6 +884,24 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Function to toggle mute status
+  const toggleMute = () => {
+    if (connection) {
+      try {
+        if (isMuted) {
+          connection.mute(false);
+          console.log("Unmuted call");
+        } else {
+          connection.mute(true);
+          console.log("Muted call");
+        }
+        setIsMuted(!isMuted);
+      } catch (error) {
+        console.error("Error toggling mute:", error);
+      }
+    }
+  };
+
   return (
     <TwilioContext.Provider
       value={{
@@ -678,6 +923,12 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         disconnect,
         makeAICall,
         getAICallStatus,
+        callDuration,
+        estimatedCost,
+        insufficientCredits,
+        checkCredits,
+        isMuted,
+        toggleMute,
       }}
     >
       {children}

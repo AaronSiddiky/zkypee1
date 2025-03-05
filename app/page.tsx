@@ -70,13 +70,13 @@ export default function HomePage() {
                 href="/signup"
                 className="bg-blue-500 text-white px-8 py-3 rounded-full text-center"
               >
-                Join Waitlist
+                Call anyone anywhere!
               </Link>
               <Link
-                href="/features"
+                href="/transfer"
                 className="text-blue-500 px-8 py-3 flex items-center justify-center"
               >
-                Learn more →
+                Convert your skype credits →
               </Link>
             </div>
             <p className="text-sm text-gray-700 font-medium mt-4">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { TwilioProvider } from "../contexts/TwilioContext";
 import Auth from "../components/Auth";
+import CreditBalance from "../components/CreditBalance";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 
@@ -84,40 +85,16 @@ function NavbarContent() {
           <div className="hidden md:flex items-center">
             <nav className="flex items-center space-x-4 lg:space-x-8 mr-4 lg:mr-8">
               <Link
-                href="/buy-number"
-                className="text-gray-700 hover:text-blue-500"
-              >
-                Buy a Number
-              </Link>
-              <Link
-                href="/transfer"
-                className="text-gray-700 hover:text-blue-500"
-              >
-                Transfer Skype Credits
-              </Link>
-              <Link
-                href="/features"
-                className="text-gray-700 hover:text-blue-500"
-              >
-                Features
-              </Link>
-              <Link
-                href="/ai-assistant"
-                className="text-gray-700 hover:text-blue-500"
-              >
-                Call someone with AI (beta)
-              </Link>
-              <Link
                 href="/dial"
                 className="bg-green-500 text-white px-4 sm:px-6 py-2 rounded-full hover:bg-green-600"
               >
                 Call Now
               </Link>
               <Link
-                href="/signup"
-                className="bg-blue-500 text-white px-4 sm:px-6 py-2 rounded-full"
+                href="/credits"
+                className="text-gray-700 hover:text-blue-500"
               >
-                Join Waitlist
+                Buy Credits
               </Link>
             </nav>
 
@@ -130,28 +107,35 @@ function NavbarContent() {
                 Login
               </button>
             ) : (
-              <div className="relative group" ref={profileMenuRef}>
-                <button
-                  className="flex items-center space-x-2"
-                  onClick={() => setProfileMenuOpen(!profileMenuOpen)}
-                >
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
-                    {user?.email?.charAt(0).toUpperCase() || "U"}
-                  </div>
-                </button>
-                <div
-                  className={`absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 transition-all duration-200 z-50 ${
-                    profileMenuOpen
-                      ? "opacity-100 visible"
-                      : "opacity-0 invisible"
-                  }`}
-                >
+              <div className="flex items-center">
+                {/* Credit balance - display next to profile logo */}
+                <div className="mr-3 px-3 py-1 bg-gray-100 rounded-lg border border-gray-200 shadow-sm">
+                  <CreditBalance showBuyButton={false} />
+                </div>
+
+                <div className="relative group" ref={profileMenuRef}>
                   <button
-                    onClick={handleSignOut}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center space-x-2"
+                    onClick={() => setProfileMenuOpen(!profileMenuOpen)}
                   >
-                    Logout
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                      {user?.email?.charAt(0).toUpperCase() || "U"}
+                    </div>
                   </button>
+                  <div
+                    className={`absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 transition-all duration-200 z-50 ${
+                      profileMenuOpen
+                        ? "opacity-100 visible"
+                        : "opacity-0 invisible"
+                    }`}
+                  >
+                    <button
+                      onClick={handleSignOut}
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -197,6 +181,22 @@ function NavbarContent() {
               >
                 AI Assistant
               </Link>
+              <Link
+                href="/credits"
+                className="text-gray-700 hover:text-blue-500 py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Buy Credits
+              </Link>
+
+              {/* Credit balance in mobile menu */}
+              {!loading && user && (
+                <div className="py-2 px-3 my-2 bg-gray-100 rounded-lg border border-gray-200 shadow-sm inline-block">
+                  <CreditBalance showBuyButton={false} />
+                </div>
+              )}
+
+              {/* Other mobile menu items */}
               <Link
                 href="/dial"
                 className="bg-green-500 text-white px-6 py-2 rounded-full hover:bg-green-600 inline-block text-center"

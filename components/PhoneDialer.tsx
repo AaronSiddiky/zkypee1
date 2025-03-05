@@ -6,6 +6,10 @@ import { useAuth } from "../contexts/AuthContext";
 import Auth from "./Auth";
 import { useTwilio } from "../contexts/TwilioContext";
 import TwilioDebugPanel from "./TwilioDebugPanel";
+import CreditBalance from "./CreditBalance";
+import Link from "next/link";
+import CallInfo from "./CallInfo";
+import LowCreditWarning from "./LowCreditWarning";
 
 interface PhoneDialerProps {
   user: any | null;
@@ -25,12 +29,13 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     setupDevice,
     makeCall,
     hangUp,
+    callDuration,
+    estimatedCost,
+    insufficientCredits,
+    isMuted,
+    toggleMute,
   } = useTwilio();
 
-  const [callDuration, setCallDuration] = useState(0);
-  const [durationInterval, setDurationInterval] = useState<number | undefined>(
-    undefined
-  );
   const [twilioNumber, setTwilioNumber] = useState<string | null>(null);
 
   // Add keyboard event handler
@@ -94,39 +99,6 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     }
   };
 
-  // Set up call duration timer when connected
-  useEffect(() => {
-    if (isConnected && connection) {
-      console.log("Call connected, starting duration timer");
-      const interval = window.setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
-      setDurationInterval(interval);
-
-      return () => {
-        if (interval) {
-          window.clearInterval(interval);
-        }
-      };
-    } else if (!isConnected) {
-      console.log("Call disconnected, resetting duration");
-      if (durationInterval) {
-        window.clearInterval(durationInterval);
-      }
-      setDurationInterval(undefined);
-      setCallDuration(0);
-    }
-  }, [isConnected, connection]);
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (durationInterval) {
-        window.clearInterval(durationInterval);
-      }
-    };
-  }, [durationInterval]);
-
   const handleNumberClick = (num: string) => {
     if (!user) {
       setShowAuth(true);
@@ -159,80 +131,120 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     hangUp();
   };
 
+  // Format duration for display
   const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
 
   return (
-    <>
-      <div className="w-full h-full flex flex-col">
-        {/* Debug Panel - Only visible in development */}
-        {process.env.NODE_ENV !== "production" && (
-          <TwilioDebugPanel className="mb-4" />
+    <div className="relative">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Make a Call</h2>
+        <p className="text-gray-600">Enter a phone number to call</p>
+      </div>
+
+      {/* Credit balance display */}
+      {user && (
+        <div className="mb-4 flex justify-between items-center">
+          <CreditBalance showBuyButton={true} />
+          <Link
+            href="/credits/history"
+            className="text-sm text-blue-600 hover:text-blue-800"
+          >
+            View History
+          </Link>
+        </div>
+      )}
+
+      {/* Low credit warning */}
+      {user && <LowCreditWarning threshold={15} />}
+
+      {/* Call information during active call */}
+      <CallInfo />
+
+      {/* Phone number input */}
+      <div className="relative mb-4">
+        <input
+          type="tel"
+          value={phoneNumber}
+          onChange={(e) => setPhoneNumber(e.target.value)}
+          placeholder="Enter phone number"
+          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {phoneNumber && (
+          <button
+            onClick={handleDelete}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M6.707 4.879A3 3 0 018.828 4H15a3 3 0 013 3v6a3 3 0 01-3 3H8.828a3 3 0 01-2.12-.879l-4.415-4.414a1 1 0 010-1.414l4.414-4.414zm4.586 1.707a1 1 0 00-1.414 1.414L11.586 10l-1.707 1.707a1 1 0 101.414 1.414L13 11.414l1.707 1.707a1 1 0 001.414-1.414L14.414 10l1.707-1.707a1 1 0 00-1.414-1.414L13 8.586l-1.707-1.707z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
         )}
+      </div>
 
-        {/* Phone input */}
-        <div className="bg-gray-50 rounded-3xl p-4 mb-6">
-          <input
-            type="text"
-            value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
-            className="w-full text-2xl font-medium text-center py-2 bg-transparent border-b border-gray-200 mb-2 focus:outline-none"
-            placeholder="Enter phone number"
-            readOnly={!user}
-          />
-
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-500">Credit: Free</div>
-            <div className="flex space-x-2">
-              <div
-                className={`h-3 w-12 rounded-full ${
-                  phoneNumber ? "bg-blue-500" : "bg-gray-300"
-                }`}
-              ></div>
-              <div className="h-3 w-3 rounded-full bg-blue-500"></div>
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+          {error}
+          {insufficientCredits && (
+            <div className="mt-2">
+              <Link
+                href="/credits"
+                className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
+              >
+                Add Credits
+              </Link>
             </div>
-          </div>
+          )}
         </div>
+      )}
 
-        {/* Error message */}
-        {error && (
-          <div className="text-center text-sm text-red-600 mt-2 mb-4 p-2 bg-red-50 rounded-md">
-            {error}
-          </div>
-        )}
+      {/* Dialer buttons */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
+          <button
+            key={num}
+            onClick={() => handleNumberClick(num.toString())}
+            className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-3 rounded-md transition-colors"
+            disabled={isConnected}
+          >
+            {num}
+          </button>
+        ))}
+      </div>
 
-        {/* Dialer pad */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
-            <button
-              key={num}
-              onClick={() => handleNumberClick(num.toString())}
-              className="w-full h-14 bg-white rounded-full flex items-center justify-center text-xl font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-            >
-              {num}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex justify-center mb-6">
-          {!isConnected && !isConnecting ? (
-            <button
-              onClick={handleCall}
-              disabled={!phoneNumber.trim() || !user || !isReady}
-              className={`w-16 h-16 rounded-full flex items-center justify-center ${
-                phoneNumber.trim() && user && isReady
-                  ? "bg-green-500 hover:bg-green-600"
-                  : "bg-gray-300"
-              } transition-colors`}
-            >
+      {/* Call/Hangup button */}
+      <div className="flex justify-center">
+        {!isConnected ? (
+          <button
+            onClick={handleCall}
+            disabled={isConnecting || !isReady}
+            className={`flex items-center justify-center w-16 h-16 rounded-full ${
+              isConnecting
+                ? "bg-yellow-500"
+                : isReady
+                ? "bg-green-500 hover:bg-green-600"
+                : "bg-gray-300"
+            } text-white transition-colors`}
+          >
+            {isConnecting ? (
+              <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full"></div>
+            ) : (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-white"
+                className="h-8 w-8"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -244,66 +256,100 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
                   d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
                 />
               </svg>
-            </button>
-          ) : (
-            <button
-              onClick={handleHangUp}
-              className="w-16 h-16 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center transition-colors"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            )}
+          </button>
+        ) : (
+          <div className="flex flex-col items-center space-y-4">
+            {/* Call controls - mute button and hang up button */}
+            <div className="flex items-center space-x-4">
+              {/* Mute button */}
+              <button
+                onClick={toggleMute}
+                className={`flex items-center justify-center w-12 h-12 rounded-full ${
+                  isMuted
+                    ? "bg-gray-700 hover:bg-gray-800"
+                    : "bg-gray-500 hover:bg-gray-600"
+                } text-white transition-colors`}
+                title={isMuted ? "Unmute call" : "Mute call"}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          )}
-        </div>
+                {isMuted ? (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                    />
+                  </svg>
+                )}
+              </button>
 
-        {/* Call status */}
-        {(isConnecting || isConnected) && (
-          <div className="text-center mb-6">
-            <div className="flex flex-col items-center space-y-2">
-              <span className="text-lg font-medium text-gray-700">
-                {isConnecting
-                  ? "Connecting..."
-                  : isConnected
-                  ? "Connected"
-                  : "Call ended"}
-              </span>
-              {isConnected && (
-                <span className="text-gray-600">
-                  {formatDuration(callDuration)}
-                </span>
-              )}
+              {/* Hang up button */}
+              <button
+                onClick={handleHangUp}
+                className="flex items-center justify-center w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white transition-colors"
+                title="End call"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-8 w-8"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
 
-            <button
-              onClick={handleHangUp}
-              className="w-full py-2 px-4 bg-red-500 text-white rounded-md hover:bg-red-600 font-medium mt-4"
-            >
-              End Call
-            </button>
+            {/* Mute status text */}
+            <span className="text-sm text-gray-600">
+              {isMuted ? "Muted" : "Unmute"}
+            </span>
           </div>
         )}
       </div>
 
-      {/* Authentication modal */}
+      {/* Auth Modal */}
       <AnimatePresence>
         {showAuth && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
             onClick={() => setShowAuth(false)}
           >
             <motion.div
@@ -337,14 +383,6 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
           </motion.div>
         )}
       </AnimatePresence>
-
-      <div className="mt-6 text-center text-sm text-gray-500">
-        {user ? (
-          <p>Calling as {user.email}</p>
-        ) : (
-          <p>Please sign in to make calls</p>
-        )}
-      </div>
-    </>
+    </div>
   );
 }

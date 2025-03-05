@@ -1,9 +1,14 @@
 {
   "pages": {
-    "/page": [
+    "/ai-assistant/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
+      "static/chunks/app/ai-assistant/page.js"
+    ],
+    "/ai-assistant/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/ai-assistant/layout.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,25 +16,10 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/buy-number/page": [
+    "/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/buy-number/page.js"
-    ],
-    "/buy-number/layout": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/buy-number/layout.js"
-    ],
-    "/dial/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dial/page.js"
-    ],
-    "/ai-assistant/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/ai-assistant/page.js"
+      "static/chunks/app/page.js"
     ],
     "/transfer/page": [
       "static/chunks/webpack.js",
@@ -41,20 +31,25 @@
       "static/chunks/main-app.js",
       "static/chunks/app/transfer/layout.js"
     ],
-    "/features/page": [
+    "/credits/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/features/page.js"
+      "static/chunks/app/credits/page.js"
     ],
-    "/features/layout": [
+    "/dial/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/features/layout.js"
+      "static/chunks/app/dial/page.js"
     ],
-    "/ai-assistant/layout": [
+    "/credits/history/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/ai-assistant/layout.js"
+      "static/chunks/app/credits/history/page.js"
+    ],
+    "/_not-found/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }

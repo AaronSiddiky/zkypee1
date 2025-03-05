@@ -1,11 +1,10 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
+  "/credits/page": "app/credits/page.js",
   "/page": "app/page.js",
   "/dial/page": "app/dial/page.js",
-  "/api/twilio/phone-number/route": "app/api/twilio/phone-number/route.js",
-  "/api/twilio/countries/route": "app/api/twilio/countries/route.js",
-  "/api/bland-ai/route": "app/api/bland-ai/route.js",
+  "/api/credits/balance/route": "app/api/credits/balance/route.js",
+  "/api/twilio/token/route": "app/api/twilio/token/route.js",
   "/ai-assistant/page": "app/ai-assistant/page.js",
-  "/features/page": "app/features/page.js",
-  "/buy-number/page": "app/buy-number/page.js",
   "/transfer/page": "app/transfer/page.js"
 }
