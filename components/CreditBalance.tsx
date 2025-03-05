@@ -129,52 +129,31 @@ export default function CreditBalance({
     fetchCreditBalance();
   }, [session, user, hasRefreshedSession]);
 
-  if (isLoading) {
+  const renderCreditBalance = () => {
+    if (isLoading) {
+      return <span className={`text-gray-500 ${className}`}>Loading...</span>;
+    }
+
+    if (error) {
+      return <span className={`text-red-500 ${className}`}>{error}</span>;
+    }
+
     return (
-      <div className={`inline-flex items-center ${className}`}>
-        <div className="animate-pulse bg-gray-200 h-5 w-20 rounded"></div>
+      <div className="flex items-center">
+        <span className={`${className}`}>
+          ${creditBalance?.toFixed(2) || "0.00"}
+        </span>
+        {showBuyButton && (
+          <Link
+            href="/credits"
+            className="ml-2 text-blue-500 hover:underline text-sm hidden md:inline-block"
+          >
+            Buy More
+          </Link>
+        )}
       </div>
     );
-  }
+  };
 
-  if (error) {
-    const isRateLimit = error.includes("rate limit");
-    return (
-      <div className={`inline-flex items-center text-red-500 ${className}`}>
-        {isRateLimit
-          ? "Rate limited - try again later"
-          : "Error loading balance"}
-      </div>
-    );
-  }
-
-  // If not authenticated or no balance
-  if (creditBalance === null) {
-    return null;
-  }
-
-  const isLowBalance = creditBalance < 50; // Consider balance below 50 credits as low
-
-  return (
-    <div className={`inline-flex items-center gap-3 ${className}`}>
-      <Link href="/credits">
-        <div
-          className={`font-medium ${
-            isLowBalance ? "text-red-500" : "text-green-600"
-          } cursor-pointer hover:text-blue-600 transition-colors`}
-        >
-          Credits: {creditBalance.toFixed(0)}
-        </div>
-      </Link>
-
-      {showBuyButton && (
-        <Link
-          href="/credits"
-          className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
-        >
-          {isLowBalance ? "Low Balance! Buy Credits" : "Buy Credits"}
-        </Link>
-      )}
-    </div>
-  );
+  return renderCreditBalance();
 }

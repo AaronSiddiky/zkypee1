@@ -52,12 +52,12 @@ export default function HomePage() {
             </p>
 
             {/* Cost indicator */}
-            <p className="text-red-600 font-bold text-lg sm:text-xl mb-4">
+            <p className="text-red-600 font-bold text-lg sm:text-xl mb-4 text-center lg:text-left">
               Only $0.15 per minute!
             </p>
 
             {/* Country Flag Rotator */}
-            <div className="mb-4">
+            <div className="mb-4 flex justify-center lg:justify-start">
               <CountryFlagRotator />
             </div>
 

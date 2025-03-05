@@ -56,9 +56,9 @@ export default function CountryFlagRotator() {
   const currentFlag = countryFlags[currentIndex];
 
   return (
-    <div className="flex items-center">
-      <div className="mr-2 text-gray-700">Call anywhere:</div>
-      <div className="relative h-10 w-12 flex items-center justify-center">
+    <div className="flex items-center justify-center lg:justify-start">
+      <div className="text-gray-700">Call anywhere:</div>
+      <div className="relative h-10 w-12 flex items-center justify-center mx-2">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentIndex}
@@ -72,7 +72,7 @@ export default function CountryFlagRotator() {
           </motion.div>
         </AnimatePresence>
       </div>
-      <div className="ml-1 text-sm text-gray-600 font-medium">
+      <div className="text-sm text-gray-600 font-medium">
         {currentFlag.name}
       </div>
     </div>

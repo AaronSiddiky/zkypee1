@@ -150,66 +150,79 @@ function NavbarContent() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-gray-200 px-4 py-2"
+            className="md:hidden bg-white border-b border-gray-200 px-4 py-4 shadow-lg"
           >
-            <nav className="flex flex-col space-y-3 py-3">
-              <Link
-                href="/features"
-                className="text-gray-700 hover:text-blue-500 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Features
-              </Link>
-              <Link
-                href="/transfer"
-                className="text-gray-700 hover:text-blue-500 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Transfer Skype Credits
-              </Link>
-              <Link
-                href="/buy-number"
-                className="text-gray-700 hover:text-blue-500 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Buy a Number
-              </Link>
-              <Link
-                href="/ai-assistant"
-                className="text-gray-700 hover:text-blue-500 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                AI Assistant
-              </Link>
-              <Link
-                href="/credits"
-                className="text-gray-700 hover:text-blue-500 py-2"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Buy Credits
-              </Link>
-
+            <nav className="flex flex-col space-y-4 py-2">
               {/* Credit balance in mobile menu */}
               {!loading && user && (
-                <div className="py-2 px-3 my-2 bg-gray-100 rounded-lg border border-gray-200 shadow-sm inline-block">
-                  <CreditBalance showBuyButton={false} />
+                <div className="py-3 px-4 my-2 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5 text-blue-500 mr-2"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                        <path
+                          fillRule="evenodd"
+                          d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span className="font-medium text-gray-700">
+                        Your Balance
+                      </span>
+                    </div>
+                    <CreditBalance
+                      showBuyButton={false}
+                      className="text-blue-600 font-bold"
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* Other mobile menu items */}
+              <Link
+                href="/credits"
+                className="text-gray-700 hover:text-blue-500 py-2 font-medium text-center flex items-center justify-center"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="mr-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z" />
+                    <path
+                      fillRule="evenodd"
+                      d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </span>
+                Buy Credits
+              </Link>
+
+              {/* Call Now button - made more prominent */}
               <Link
                 href="/dial"
-                className="bg-green-500 text-white px-6 py-2 rounded-full hover:bg-green-600 inline-block text-center"
+                className="bg-green-500 text-white px-6 py-3 rounded-full hover:bg-green-600 text-center font-medium flex items-center justify-center"
                 onClick={() => setMobileMenuOpen(false)}
               >
+                <span className="mr-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                  </svg>
+                </span>
                 Call Now
-              </Link>
-              <Link
-                href="/signup"
-                className="bg-blue-500 text-white px-6 py-2 rounded-full inline-block text-center"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Join Waitlist
               </Link>
 
               {/* Login/Profile for mobile */}
@@ -219,26 +232,38 @@ function NavbarContent() {
                     setShowAuth(true);
                     setMobileMenuOpen(false);
                   }}
-                  className="text-gray-700 hover:text-blue-500 font-medium py-2 text-left"
+                  className="text-gray-700 hover:text-blue-500 font-medium py-3 text-center flex items-center justify-center"
                 >
+                  <span className="mr-2">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </span>
                   Login
                 </button>
               ) : (
-                <div className="py-2">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                <div className="py-3 flex justify-center">
+                  <button
+                    onClick={async () => {
+                      await handleSignOut();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="text-gray-700 hover:text-blue-500 font-medium flex items-center"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium mr-2">
                       {user?.email?.charAt(0).toUpperCase() || "U"}
                     </div>
-                    <button
-                      onClick={async () => {
-                        await handleSignOut();
-                        setMobileMenuOpen(false);
-                      }}
-                      className="text-gray-700 hover:text-blue-500"
-                    >
-                      Logout
-                    </button>
-                  </div>
+                    <span>Logout</span>
+                  </button>
                 </div>
               )}
             </nav>

@@ -148,7 +148,15 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       {/* Credit balance display */}
       {user && (
         <div className="mb-4 flex justify-between items-center">
-          <CreditBalance showBuyButton={true} />
+          <div className="flex items-center">
+            <span className="mr-2 hidden md:inline-block text-gray-600">
+              Your credit balance:
+            </span>
+            <CreditBalance
+              showBuyButton={true}
+              className="font-semibold text-lg"
+            />
+          </div>
         </div>
       )}
 
