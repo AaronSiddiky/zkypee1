@@ -3,6 +3,7 @@ import twilio from "twilio";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import rateLimit from "@/lib/rate-limit";
+import { storeTokenForUser } from "@/lib/twilio-token";
 
 // Create a rate limiter (5 requests per minute per IP)
 const tokenLimiter = rateLimit({
@@ -23,16 +24,6 @@ const corsHeaders = {
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
-
-// Map to store tokens by user ID (for server-side use only)
-// In production, you'd use a more persistent and secure storage
-const userTokenCache = new Map<
-  string,
-  {
-    token: string;
-    expiry: number;
-  }
->();
 
 /**
  * Generates a token for a user but does NOT return it
@@ -112,11 +103,8 @@ export async function POST(request: NextRequest) {
       const tokenString = token.toJwt();
       console.log("Token generated successfully for user:", userId);
 
-      // Store token in server-side cache
-      userTokenCache.set(userId, {
-        token: tokenString,
-        expiry: Date.now() + 900 * 1000, // 15 minutes in ms
-      });
+      // Store token in server-side cache using the utility function
+      storeTokenForUser(userId, tokenString, 900 * 1000); // 15 minutes in ms
 
       // Return success but WITHOUT the token
       return NextResponse.json(
@@ -144,16 +132,4 @@ export async function POST(request: NextRequest) {
       { status: 500, headers: corsHeaders }
     );
   }
-}
-
-// Export the token getter for other server components to use
-export function getTokenForUser(userId: string): string | null {
-  const cachedData = userTokenCache.get(userId);
-
-  // If no token or token expired, return null
-  if (!cachedData || cachedData.expiry < Date.now()) {
-    return null;
-  }
-
-  return cachedData.token;
 }

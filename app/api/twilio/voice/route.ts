@@ -2,7 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import twilio from "twilio";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { getTokenForUser } from "../token/route";
+import { getTokenForUser } from "@/lib/twilio-token";
 
 // CORS headers
 const corsHeaders = {
