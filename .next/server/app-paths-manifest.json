@@ -1,7 +1,7 @@
 {
   "/credits/page": "app/credits/page.js",
+  "/page": "app/page.js",
   "/dial/page": "app/dial/page.js",
-  "/features/page": "app/features/page.js",
   "/ai-assistant/page": "app/ai-assistant/page.js",
   "/transfer/page": "app/transfer/page.js"
 }

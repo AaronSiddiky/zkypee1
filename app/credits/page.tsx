@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { CREDIT_PACKAGES, COST_PER_MINUTE } from "@/lib/stripe";
@@ -16,6 +16,13 @@ import Auth from "@/components/Auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/lib/supabase";
 
+// Declare a window property for session refresh tracking
+declare global {
+  interface Window {
+    sessionRefreshed?: boolean;
+  }
+}
+
 export default function CreditsPage() {
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
@@ -26,9 +33,22 @@ export default function CreditsPage() {
   const [showAuth, setShowAuth] = useState(false);
   const router = useRouter();
 
+  // Track if we've already loaded credits to prevent duplicate calls
+  const hasLoadedCredits = useRef(false);
+
   // Use the auth context
   const { session, user, loading: authLoading } = useAuth();
   const isAuthenticated = !!user;
+
+  // Clean up the session tracking when the component unmounts
+  useEffect(() => {
+    return () => {
+      // Reset the session refresh flag when component unmounts
+      if (typeof window !== "undefined") {
+        window.sessionRefreshed = false;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const checkAuthAndFetchBalance = async () => {
@@ -37,10 +57,11 @@ export default function CreditsPage() {
         return; // Wait for auth to finish loading
       }
 
-      if (isAuthenticated && user) {
+      if (isAuthenticated && user && !hasLoadedCredits.current) {
         console.log("User is authenticated, fetching credit balance");
         await fetchCreditBalance();
-      } else {
+        hasLoadedCredits.current = true;
+      } else if (!isAuthenticated) {
         console.log("User is not authenticated", {
           isAuthenticated,
           hasUser: !!user,
@@ -49,6 +70,8 @@ export default function CreditsPage() {
         setError("Please sign in to view your credits");
         // We'll show the auth UI
         setShowAuth(true);
+      } else {
+        console.log("Credits already loaded, skipping fetch");
       }
     };
 
@@ -68,36 +91,48 @@ export default function CreditsPage() {
         return;
       }
 
-      // Try to refresh the session only once per fetch
-      let refreshedToken = null;
+      // Store the current token to use
+      let tokenToUse = session.access_token;
+
+      // Try to refresh session only once on component mount
+      // We're using a more direct approach here to prevent infinite loops
       try {
-        const { data, error } = await supabase.auth.refreshSession();
-        if (error) {
-          if (error.message.includes("rate limit")) {
-            console.log("Rate limit hit, skipping refresh");
-          } else {
-            console.log("Failed to refresh session:", error.message);
+        // We'll create a ref to store whether we already refreshed the session in this component lifecycle
+        if (!window.sessionRefreshed) {
+          const { data, error } = await supabase.auth.refreshSession();
+
+          // Mark that we've already refreshed to prevent looping
+          window.sessionRefreshed = true;
+
+          if (error) {
+            if (error.message.includes("rate limit")) {
+              console.log("Rate limit hit, skipping refresh");
+            } else {
+              console.log("Failed to refresh session:", error.message);
+            }
+          } else if (data.session) {
+            console.log("Session refreshed successfully");
+            tokenToUse = data.session.access_token;
           }
-        } else if (data.session) {
-          console.log("Session refreshed successfully");
-          refreshedToken = data.session.access_token;
+        } else {
+          console.log(
+            "Session already refreshed in this session, skipping refresh"
+          );
         }
       } catch (refreshError) {
         console.error("Error refreshing session:", refreshError);
       }
 
-      const token = refreshedToken || session.access_token;
-
       console.log(
         "Fetching credit balance with token:",
-        token.substring(0, 10) + "..."
+        tokenToUse.substring(0, 10) + "..."
       );
 
       // Fetch credit balance with auth token
       const response = await fetch("/api/credits/balance", {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${tokenToUse}`,
           "Content-Type": "application/json",
         },
         cache: "no-store", // Add cache busting
