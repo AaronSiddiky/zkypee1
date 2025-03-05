@@ -33,7 +33,7 @@ export default function TestTwilioPage() {
     isReady,
     isConnecting,
     isConnected,
-    error,
+    error: twilioError,
     deviceDebugInfo,
   } = twilioContext || {
     initializeDevice: async () => false,
@@ -106,10 +106,10 @@ export default function TestTwilioPage() {
     <div className="container mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Twilio Test Page</h1>
 
-      {error && (
+      {twilioError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
           <p>
-            <strong>Error:</strong> {error}
+            <strong>Error:</strong> {twilioError}
           </p>
         </div>
       )}
