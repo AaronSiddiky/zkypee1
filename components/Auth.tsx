@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { motion } from "framer-motion";
+import ReCAPTCHA from "react-google-recaptcha";
 
 // Helper function to get the base URL with a fallback to window.location.origin
 function getBaseUrl() {
@@ -23,10 +24,23 @@ export default function Auth({ onSuccess }: AuthProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [captchaVerified, setCaptchaVerified] = useState(false);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
+
+  const handleCaptchaChange = (token: string | null) => {
+    setCaptchaVerified(!!token);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    // Validate CAPTCHA for login (always require for login, optionally for signup)
+    if (!isSignUp && !captchaVerified) {
+      setError("Please complete the CAPTCHA verification");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -69,6 +83,11 @@ export default function Auth({ onSuccess }: AuthProps) {
     } catch (err: any) {
       console.error("Authentication error:", err);
       setError(err.message || "An error occurred during authentication");
+      // Reset CAPTCHA on error
+      if (recaptchaRef.current) {
+        recaptchaRef.current.reset();
+      }
+      setCaptchaVerified(false);
     } finally {
       setLoading(false);
     }
@@ -178,7 +197,7 @@ export default function Auth({ onSuccess }: AuthProps) {
           />
         </div>
 
-        <div className="mb-6">
+        <div className="mb-4">
           <label
             htmlFor="password"
             className="block text-sm font-medium text-gray-700 mb-1"
@@ -198,9 +217,29 @@ export default function Auth({ onSuccess }: AuthProps) {
           />
         </div>
 
+        {/* reCAPTCHA */}
+        {!isSignUp && (
+          <div className="mb-6">
+            <div className="flex justify-center">
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={
+                  process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
+                  "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+                }
+                onChange={handleCaptchaChange}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              This site is protected by reCAPTCHA to prevent spam and automated
+              abuse.
+            </p>
+          </div>
+        )}
+
         <motion.button
           type="submit"
-          disabled={loading}
+          disabled={loading || (!isSignUp && !captchaVerified)}
           className="w-full py-2.5 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 transition-colors duration-200 font-medium shadow-md"
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
@@ -211,7 +250,13 @@ export default function Auth({ onSuccess }: AuthProps) {
 
       <div className="mt-6 text-center">
         <button
-          onClick={() => setIsSignUp(!isSignUp)}
+          onClick={() => {
+            setIsSignUp(!isSignUp);
+            setCaptchaVerified(false);
+            if (recaptchaRef.current) {
+              recaptchaRef.current.reset();
+            }
+          }}
           className="text-blue-500 hover:text-blue-700 text-sm font-medium transition-colors duration-200"
         >
           {isSignUp
