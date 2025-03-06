@@ -86,7 +86,9 @@ body {
 
 /* Add this to your global CSS */
 @media (max-width: 768px) {
-  button, .button, a.button {
+  button,
+  .button,
+  a.button {
     max-width: 200px !important;
     width: auto !important;
     padding-left: 12px !important;
@@ -94,7 +96,7 @@ body {
   }
 
   /* More aggressive targeting with !important */
-  .fixed button, 
+  .fixed button,
   [role="dialog"] button,
   nav button,
   .menu button {
