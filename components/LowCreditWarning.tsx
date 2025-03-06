@@ -34,15 +34,56 @@ export default function LowCreditWarning({
           return;
         }
 
-        // Fetch credit balance
-        const response = await fetch("/api/credits/balance");
-        const data = await response.json();
+        // Get the current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          setIsLoading(false);
+          return;
+        }
 
-        if (response.ok) {
-          setCreditBalance(data.creditBalance);
+        console.log("Fetching credit balance directly from Supabase");
+
+        // Directly query the users table in Supabase
+        const { data, error } = await supabase
+          .from('users')
+          .select('credit_balance')
+          .eq('id', user.id)
+          .maybeSingle();
+        
+        if (error) {
+          console.error("Error fetching credit balance from Supabase:", error);
+          throw new Error(`Failed to fetch credit balance: ${error.message}`);
+        }
+        
+        // If user exists, use their credit balance, otherwise create the user
+        if (data) {
+          const balance = data.credit_balance || 0;
+          console.log("Credit balance fetched successfully:", balance);
+          setCreditBalance(balance);
 
           // Calculate if warning should be shown
-          const minutesAvailable = data.creditBalance / COST_PER_MINUTE;
+          const minutesAvailable = balance / COST_PER_MINUTE;
+          setShowWarning(minutesAvailable < threshold);
+        } else {
+          console.log("User not found in database, creating user with default credits");
+          
+          // Default credits for new users
+          const defaultCredits = 5.00;
+          
+          // Create user with default credits
+          const { error: insertError } = await supabase
+            .from('users')
+            .insert([{ id: user.id, credit_balance: defaultCredits }]);
+            
+          if (insertError) {
+            console.error("Error creating user:", insertError);
+            // Still use the default credits even if insert fails
+          }
+          
+          setCreditBalance(defaultCredits);
+          
+          // Calculate if warning should be shown with default credits
+          const minutesAvailable = defaultCredits / COST_PER_MINUTE;
           setShowWarning(minutesAvailable < threshold);
         }
       } catch (error) {

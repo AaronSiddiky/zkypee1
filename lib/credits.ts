@@ -144,19 +144,48 @@ export async function hasEnoughCredits(
   userId: string,
   durationMinutes: number
 ) {
+  console.log(`Checking if user ${userId} has enough credits for ${durationMinutes} minutes`);
   const requiredCredits = durationMinutes * COST_PER_MINUTE;
+  console.log(`Required credits: ${requiredCredits} (${durationMinutes} minutes at ${COST_PER_MINUTE}/min)`);
 
+  // Try to get the user's credit balance
   const { data: user, error } = await supabase
     .from("users")
     .select("credit_balance")
     .eq("id", userId)
-    .single();
+    .maybeSingle(); // Use maybeSingle instead of single
 
-  if (error) {
-    throw new Error(`Error fetching user: ${error.message}`);
+  // If user doesn't exist, create them with default credits
+  if (error || !user) {
+    console.log("User not found in database, creating user record");
+    
+    // Default credits for new users
+    const defaultCredits = 5.00;
+    
+    // Create the user with default credits
+    const { error: insertError } = await supabase
+      .from("users")
+      .insert([{ id: userId, credit_balance: defaultCredits }]);
+    
+    if (insertError) {
+      console.error("Error creating user record:", insertError);
+      // Continue with default credits even if insert fails
+    } else {
+      console.log(`User created with default balance of ${defaultCredits}`);
+    }
+    
+    // Check if default credits are enough
+    console.log(`User credit balance (default): ${defaultCredits}`);
+    console.log(`Has enough credits: ${defaultCredits >= requiredCredits}`);
+    
+    return defaultCredits >= requiredCredits;
   }
 
-  return (user.credit_balance || 0) >= requiredCredits;
+  const creditBalance = user?.credit_balance || 0;
+  console.log(`User credit balance: ${creditBalance}`);
+  console.log(`Has enough credits: ${creditBalance >= requiredCredits}`);
+  
+  return creditBalance >= requiredCredits;
 }
 
 // Deduct credits after a call
@@ -231,10 +260,10 @@ export async function getUserCreditBalance(
       );
     }
 
-    // If user doesn't exist, create the user with 204 credits
+    // If user doesn't exist, create the user with 0 credits
     if (!existingUser || existingUser.length === 0) {
       console.log(
-        "User not found in public.users table, creating user with 204 credits"
+        "User not found in public.users table, creating user with 0 credits"
       );
 
       // Get user's email from auth
@@ -243,28 +272,28 @@ export async function getUserCreditBalance(
 
       if (userError) {
         console.error("Error getting user data:", userError);
-        return 204; // Return 204 credits even if we can't get email
+        return 0; // Return 0 credits if we can't get email
       }
 
       const email = userData.user?.email || "unknown@example.com";
 
-      // Create the user with 204 credits
+      // Create the user with 0 credits
       const { error: insertError } = await supabase.from("users").insert([
         {
           id: userId,
           email: email,
-          credit_balance: 204,
+          credit_balance: 0,
         },
       ]);
 
       if (insertError) {
         console.error("Error creating user:", insertError);
-        // If we can't create the user, still return 204 credits
-        return 204;
+        // If we can't create the user, still return 0 credits
+        return 0;
       }
 
-      console.log("User created successfully with 204 credits");
-      return 204;
+      console.log("User created successfully with 0 credits");
+      return 0;
     }
 
     // If multiple user records are found (shouldn't happen but let's handle it)
@@ -278,7 +307,7 @@ export async function getUserCreditBalance(
         "Credit balance from first record:",
         existingUser[0].credit_balance
       );
-      return existingUser[0].credit_balance || 204;
+      return existingUser[0].credit_balance || 0;
     }
 
     // User exists (single record), directly return their credit balance
@@ -286,10 +315,10 @@ export async function getUserCreditBalance(
       "Credit balance fetched successfully:",
       existingUser[0].credit_balance
     );
-    return existingUser[0].credit_balance || 204;
+    return existingUser[0].credit_balance || 0;
   } catch (error) {
     console.error("Error in getUserCreditBalance:", error);
-    // Return 204 credits in case of any error
-    return 204;
+    // Return 0 credits in case of any error
+    return 0;
   }
 }

@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useAuth } from "./AuthContext";
 import { COST_PER_MINUTE } from "@/lib/stripe";
+import { supabase } from "@/lib/supabase";
 
 // Updated interface without any token or device references
 interface TwilioContextType {
@@ -111,24 +112,58 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   // Check if user has enough credits for a call
   const checkCredits = async (durationMinutes: number = 10) => {
     try {
+      if (!user || !user.id) {
+        console.error("Cannot check credits: No authenticated user");
+        setError("You must be signed in to check credits");
+        return false;
+      }
+
+      // Get the current session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.error("Cannot check credits: No active session");
+        setError("No active session found. Please sign in again.");
+        return false;
+      }
+
+      console.log(`Checking credits for ${durationMinutes} minutes of call time`);
+
       const response = await fetch("/api/credits/check", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session.access_token}`
         },
         body: JSON.stringify({ durationMinutes }),
-        credentials: "same-origin",
+        credentials: "include",
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Credit check failed:", errorData);
+        setError(errorData.error || "Failed to check credits");
+        setInsufficientCredits(true);
+        return false;
+      }
+
       const data = await response.json();
+      console.log("Credit check response:", data);
 
       // Update state based on credit check result
       setInsufficientCredits(!data.hasEnoughCredits);
+      
+      if (!data.hasEnoughCredits) {
+        setError("Insufficient credits. Please add more credits to make calls.");
+      } else {
+        setError(null);
+      }
+      
       return data.hasEnoughCredits;
     } catch (error) {
       console.error("Error checking credits:", error);
       // Assume not enough credits in case of error
       setInsufficientCredits(true);
+      setError("Error checking credits. Please try again.");
       return false;
     }
   };
@@ -169,6 +204,18 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     if (callDuration <= 0) return;
 
     try {
+      if (!user || !user.id) {
+        console.error("Cannot deduct credits: No authenticated user");
+        return;
+      }
+
+      // Get the current session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.error("Cannot deduct credits: No active session");
+        return;
+      }
+
       // Convert seconds to minutes (rounded up)
       const durationMinutes = Math.ceil(callDuration / 60);
 
@@ -176,9 +223,10 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session.access_token}`
         },
         body: JSON.stringify({ durationMinutes }),
-        credentials: "same-origin",
+        credentials: "include",
       });
     } catch (error) {
       console.error("Error deducting credits:", error);
@@ -193,12 +241,19 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
+      // Get the current session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError("No active session found. Please sign in again.");
+        return false;
+      }
+
       // Check if user has enough credits
+      console.log("Checking if user has enough credits before making call");
       const hasEnoughCredits = await checkCredits(10); // Check for 10 minutes
       if (!hasEnoughCredits) {
-        setError(
-          "Insufficient credits. Please add more credits to make calls."
-        );
+        console.error("Insufficient credits to make call");
+        // Error message is already set by checkCredits
         return false;
       }
 
@@ -208,7 +263,11 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       // Initialize Twilio capabilities server-side
       const initResponse = await fetch("/api/twilio/token", {
         method: "POST",
-        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session.access_token}`
+        },
+        credentials: "include",
       });
 
       if (!initResponse.ok) {
@@ -223,9 +282,10 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session.access_token}`
         },
         body: JSON.stringify({ phoneNumber }),
-        credentials: "same-origin",
+        credentials: "include",
       });
 
       if (!callResponse.ok) {
@@ -338,10 +398,21 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
+      // Get the current session
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setError("No active session found. Please sign in again.");
+        return false;
+      }
+
       // Just initialize the server-side token
       const response = await fetch("/api/twilio/token", {
         method: "POST",
-        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session.access_token}`
+        },
+        credentials: "include",
       });
 
       if (!response.ok) {

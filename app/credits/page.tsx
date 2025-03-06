@@ -84,83 +84,46 @@ export default function CreditsPage() {
       setError(null);
 
       // Skip fetching if not authenticated
-      if (!session) {
-        console.log("No session available, skipping fetch");
+      if (!session || !user) {
+        console.log("No session or user available, skipping fetch");
         setIsLoading(false);
         setError("Please sign in to view your credits");
         return;
       }
 
-      // Store the current token to use
-      let tokenToUse = session.access_token;
+      console.log("Fetching credit balance directly from Supabase");
 
-      // Try to refresh session only once on component mount
-      // We're using a more direct approach here to prevent infinite loops
-      try {
-        // We'll create a ref to store whether we already refreshed the session in this component lifecycle
-        if (!window.sessionRefreshed) {
-          const { data, error } = await supabase.auth.refreshSession();
-
-          // Mark that we've already refreshed to prevent looping
-          window.sessionRefreshed = true;
-
-          if (error) {
-            if (error.message.includes("rate limit")) {
-              console.log("Rate limit hit, skipping refresh");
-            } else {
-              console.log("Failed to refresh session:", error.message);
-            }
-          } else if (data.session) {
-            console.log("Session refreshed successfully");
-            tokenToUse = data.session.access_token;
-          }
-        } else {
-          console.log(
-            "Session already refreshed in this session, skipping refresh"
-          );
-        }
-      } catch (refreshError) {
-        console.error("Error refreshing session:", refreshError);
+      // Directly query the users table in Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .select('credit_balance')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching credit balance from Supabase:", error);
+        throw new Error(`Failed to fetch credit balance: ${error.message}`);
       }
-
-      console.log(
-        "Fetching credit balance with token:",
-        tokenToUse.substring(0, 10) + "..."
-      );
-
-      // Fetch credit balance with auth token
-      const response = await fetch("/api/credits/balance", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${tokenToUse}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store", // Add cache busting
-      });
-
-      console.log("API response status:", response.status);
-
-      const data = await response.json();
-      console.log("API response data:", data);
-
-      if (!response.ok) {
-        // Handle different error scenarios
-        if (data.error === "Database setup required") {
-          throw new Error(
-            "Database tables need to be set up. Please visit the setup page."
-          );
-        } else if (response.status === 401) {
-          throw new Error("You must be signed in to view credits");
-        } else {
-          throw new Error(data.error || "Failed to fetch credit balance");
+      
+      // If user exists, use their credit balance, otherwise default to 0
+      if (data) {
+        console.log("Credit balance fetched successfully:", data.credit_balance);
+        setCreditBalance(data.credit_balance || 0);
+      } else {
+        console.log("User not found in database, setting credit balance to 0");
+        setCreditBalance(0);
+        
+        // Create user with 0 credits if they don't exist
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert([{ id: user.id, credit_balance: 0 }]);
+          
+        if (insertError) {
+          console.error("Error creating user:", insertError);
         }
       }
-
-      // Set the credit balance from the response
-      setCreditBalance(data.creditBalance);
-      console.log("Credit balance fetched successfully:", data.creditBalance);
     } catch (err) {
-      console.error("Error fetching credit balance:", err);
+      console.error("Error in fetchCreditBalance:", err);
       setError(
         err instanceof Error ? err.message : "An unknown error occurred"
       );

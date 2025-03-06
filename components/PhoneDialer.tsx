@@ -265,6 +265,8 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [showAuth, setShowAuth] = useState(false);
   const [selectedCountryCode, setSelectedCountryCode] = useState(
+    countryCodes.find(c => c.code === "+1" && c.name === "United States") || 
+    countryCodes.find(c => c.code === "+1") || 
     countryCodes[0]
   );
   const [showCountryCodes, setShowCountryCodes] = useState(false);
@@ -321,7 +323,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []); // Add dependencies
+  }, [phoneNumber]); // Add phoneNumber as dependency
 
   // Initialize Twilio when user is available
   useEffect(() => {
@@ -360,8 +362,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   };
 
   const handleCall = async () => {
-    if (!phoneNumber.trim()) {
-      alert("Please enter a phone number");
+    if (!phoneNumber) {
       return;
     }
 
@@ -370,8 +371,32 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       return;
     }
 
-    console.log("Making call to:", phoneNumber);
-    await makeCall(`${selectedCountryCode.code}${phoneNumber}`);
+    // Format the phone number with country code
+    const fullNumber = `${selectedCountryCode.code}${phoneNumber.replace(
+      /\D/g,
+      ""
+    )}`;
+
+    try {
+      // Initialize the device if not already done
+      if (!isReady) {
+        const initialized = await initializeDevice();
+        if (!initialized) {
+          console.error("Failed to initialize Twilio device");
+          return;
+        }
+      }
+
+      // Make the call
+      const callSuccess = await makeCall(fullNumber);
+      
+      if (!callSuccess && error?.includes("Authentication required")) {
+        // If there's an authentication error, show the auth modal
+        setShowAuth(true);
+      }
+    } catch (err) {
+      console.error("Error making call:", err);
+    }
   };
 
   const handleHangUp = () => {
@@ -385,6 +410,56 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
   };
+
+  // Render authentication UI if user is not logged in
+  if (!loading && !user) {
+    return (
+      <div className="w-full">
+        <h1 className="text-2xl font-bold mb-4">Make a Call</h1>
+        <p className="text-gray-600 mb-6">Enter a phone number to call</p>
+        
+        <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
+          <p className="font-medium">Authentication Required</p>
+          <p className="text-sm">You need to sign in to make phone calls.</p>
+        </div>
+        
+        <button
+          onClick={() => setShowAuth(true)}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded transition-colors"
+        >
+          Sign In to Continue
+        </button>
+        
+        {/* Auth Modal */}
+        {showAuth && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
+              <button
+                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowAuth(false)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+              <Auth onSuccess={() => setShowAuth(false)} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -645,48 +720,6 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
           </div>
         )}
       </div>
-
-      {/* Auth Modal */}
-      <AnimatePresence>
-        {showAuth && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-            onClick={() => setShowAuth(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 z-10"
-                onClick={() => setShowAuth(false)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-              <Auth onSuccess={() => setShowAuth(false)} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

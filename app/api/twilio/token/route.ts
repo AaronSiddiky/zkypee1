@@ -46,24 +46,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Supabase client
-    const supabase = createServerComponentClient({ cookies });
+    const cookieStore = cookies();
+    const supabase = createServerComponentClient({ cookies: () => cookieStore });
 
-    // Check authentication
+    // Check authentication from cookies first
     const {
       data: { session },
     } = await supabase.auth.getSession();
 
-    if (!session || !session.user) {
-      console.error("Unauthorized token request - no session");
+    // If no session from cookies, try to get it from the Authorization header
+    let userId = session?.user?.id;
+    
+    if (!userId) {
+      // Try to get token from Authorization header
+      const authHeader = request.headers.get("Authorization");
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        const token = authHeader.split(" ")[1];
+        
+        // Verify the token
+        try {
+          const { data: userData } = await supabase.auth.getUser(token);
+          userId = userData?.user?.id;
+          console.log("User authenticated from Authorization header:", userId);
+        } catch (verifyError) {
+          console.error("Error verifying token from header:", verifyError);
+        }
+      }
+    } else {
+      console.log("User authenticated from session cookie:", userId);
+    }
+
+    // If still no user ID, return unauthorized
+    if (!userId) {
+      console.error("Unauthorized token request - no valid session");
       return NextResponse.json(
         { error: "Unauthorized - Authentication required" },
         { status: 401, headers: corsHeaders }
       );
     }
-
-    // Get user ID from authenticated user
-    const userId = session.user.id;
-    console.log("Authenticated user ID:", userId);
 
     // Check if Twilio credentials are set
     const accountSid = process.env.TWILIO_ACCOUNT_SID;

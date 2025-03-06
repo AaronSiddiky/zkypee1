@@ -3,37 +3,54 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 export default function ThankYouPage() {
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { session, loading: authLoading } = useAuth();
+  const { session, user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     // Only fetch data if the user is authenticated
-    if (!authLoading && session) {
+    if (!authLoading && session && user) {
       fetchCreditBalance();
     } else if (!authLoading && !session) {
       // If auth is done loading and we don't have a session, we're not authenticated
       setIsLoading(false);
     }
-  }, [session, authLoading]);
+  }, [session, user, authLoading]);
 
   const fetchCreditBalance = async () => {
     try {
       setIsLoading(true);
 
-      // Fetch credit balance with auth token in header
-      const response = await fetch("/api/credits/balance", {
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        credentials: "include",
-      });
-      const data = await response.json();
+      if (!user) {
+        console.log("No user available, skipping fetch");
+        setIsLoading(false);
+        return;
+      }
 
-      if (response.ok) {
-        setCreditBalance(data.creditBalance);
+      console.log("Fetching credit balance directly from Supabase");
+
+      // Directly query the users table in Supabase
+      const { data, error } = await supabase
+        .from('users')
+        .select('credit_balance')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error("Error fetching credit balance from Supabase:", error);
+        throw new Error(`Failed to fetch credit balance: ${error.message}`);
+      }
+      
+      // If user exists, use their credit balance, otherwise default to 0
+      if (data) {
+        console.log("Credit balance fetched successfully:", data.credit_balance);
+        setCreditBalance(data.credit_balance || 0);
+      } else {
+        console.log("User not found in database, setting credit balance to 0");
+        setCreditBalance(0);
       }
     } catch (error) {
       console.error("Error fetching credit balance:", error);
