@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Credit System API Tester</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1 {
+        color: #2c3e50;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+      }
+      .section {
+        background: #f9f9f9;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .section h2 {
+        margin-top: 0;
+        color: #3498db;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+      }
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.3s;
+      }
+      button:hover {
+        background: #2980b9;
+      }
+      .result {
+        margin-top: 15px;
+        background: #f1f1f1;
+        border-radius: 4px;
+        padding: 15px;
+        white-space: pre-wrap;
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 14px;
+      }
+      .success {
+        border-left: 4px solid #2ecc71;
+      }
+      .error {
+        border-left: 4px solid #e74c3c;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Credit System API Tester</h1>
+
+    <div class="section">
+      <h2>1. Credit Balance Check</h2>
+      <p>Test the endpoint that retrieves your current credit balance.</p>
+      <div class="form-group">
+        <button id="checkBalance">Check Balance</button>
+      </div>
+      <div id="balanceResult" class="result"></div>
+    </div>
+
+    <div class="section">
+      <h2>2. Credit Check for Phone Number</h2>
+      <p>Test if you have enough credits to call a specific phone number.</p>
+
+      <div class="form-group">
+        <label for="phoneNumber">Phone Number (with country code):</label>
+        <input
+          type="text"
+          id="phoneNumber"
+          placeholder="+12025550123"
+          value="+12025550123"
+        />
+      </div>
+
+      <div class="form-group">
+        <label>Method:</label>
+        <div>
+          <input
+            type="radio"
+            id="getMethod"
+            name="method"
+            value="GET"
+            checked
+          />
+          <label for="getMethod">GET</label>
+
+          <input type="radio" id="postMethod" name="method" value="POST" />
+          <label for="postMethod">POST</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <button id="checkCredits">Check Credits</button>
+      </div>
+
+      <div id="creditCheckResult" class="result"></div>
+    </div>
+
+    <div class="section">
+      <h2>3. Call History</h2>
+      <p>Test retrieving your call history with pagination.</p>
+
+      <div class="form-group">
+        <label for="page">Page:</label>
+        <input type="number" id="page" value="1" min="1" />
+      </div>
+
+      <div class="form-group">
+        <label for="limit">Items Per Page:</label>
+        <input type="number" id="limit" value="10" min="1" max="50" />
+      </div>
+
+      <div class="form-group">
+        <button id="getCallHistory">Get Call History</button>
+      </div>
+
+      <div id="callHistoryResult" class="result"></div>
+    </div>
+
+    <div class="section">
+      <h2>4. Run All Tests</h2>
+      <p>Run all API endpoint tests at once.</p>
+      <div class="form-group">
+        <button id="runAllTests">Run All Tests</button>
+      </div>
+      <div id="allTestsResult" class="result"></div>
+    </div>
+
+    <script>
+      // Helper function to format JSON
+      function formatJSON(obj) {
+        return JSON.stringify(obj, null, 2);
+      }
+
+      // Show result in the appropriate div
+      function showResult(elementId, data, isSuccess = true) {
+        const element = document.getElementById(elementId);
+        element.textContent =
+          typeof data === "object" ? formatJSON(data) : data;
+        element.className = isSuccess ? "result success" : "result error";
+      }
+
+      // Test Credit Balance
+      document
+        .getElementById("checkBalance")
+        .addEventListener("click", async () => {
+          try {
+            const balanceResult = document.getElementById("balanceResult");
+            balanceResult.textContent = "Loading...";
+
+            const response = await fetch("/api/credits/balance", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+            });
+
+            const data = await response.json();
+            showResult("balanceResult", data, response.ok);
+          } catch (error) {
+            showResult("balanceResult", `Error: ${error.message}`, false);
+          }
+        });
+
+      // Test Credit Check
+      document
+        .getElementById("checkCredits")
+        .addEventListener("click", async () => {
+          try {
+            const creditCheckResult =
+              document.getElementById("creditCheckResult");
+            creditCheckResult.textContent = "Loading...";
+
+            const phoneNumber = document.getElementById("phoneNumber").value;
+            const method = document.querySelector(
+              'input[name="method"]:checked'
+            ).value;
+
+            let response;
+
+            if (method === "GET") {
+              response = await fetch(
+                `/api/credits/check?phoneNumber=${encodeURIComponent(
+                  phoneNumber
+                )}`,
+                {
+                  method: "GET",
+                  headers: { "Content-Type": "application/json" },
+                }
+              );
+            } else {
+              response = await fetch("/api/credits/check", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phoneNumber }),
+              });
+            }
+
+            const data = await response.json();
+            showResult("creditCheckResult", data, response.ok);
+          } catch (error) {
+            showResult("creditCheckResult", `Error: ${error.message}`, false);
+          }
+        });
+
+      // Test Call History
+      document
+        .getElementById("getCallHistory")
+        .addEventListener("click", async () => {
+          try {
+            const callHistoryResult =
+              document.getElementById("callHistoryResult");
+            callHistoryResult.textContent = "Loading...";
+
+            const page = document.getElementById("page").value;
+            const limit = document.getElementById("limit").value;
+
+            const response = await fetch(
+              `/api/calls/history?page=${page}&limit=${limit}`,
+              {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+
+            const data = await response.json();
+            showResult("callHistoryResult", data, response.ok);
+          } catch (error) {
+            showResult("callHistoryResult", `Error: ${error.message}`, false);
+          }
+        });
+
+      // Run All Tests
+      document
+        .getElementById("runAllTests")
+        .addEventListener("click", async () => {
+          try {
+            const allTestsResult = document.getElementById("allTestsResult");
+            allTestsResult.textContent = "Running all tests...";
+
+            const phoneNumber = document.getElementById("phoneNumber").value;
+            const page = document.getElementById("page").value;
+            const limit = document.getElementById("limit").value;
+
+            // Test Credit Balance
+            const balanceResponse = await fetch("/api/credits/balance", {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+            });
+            const balanceData = await balanceResponse.json();
+
+            // Test Credit Check (GET)
+            const creditCheckGetResponse = await fetch(
+              `/api/credits/check?phoneNumber=${encodeURIComponent(
+                phoneNumber
+              )}`,
+              {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+            const creditCheckGetData = await creditCheckGetResponse.json();
+
+            // Test Credit Check (POST)
+            const creditCheckPostResponse = await fetch("/api/credits/check", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ phoneNumber }),
+            });
+            const creditCheckPostData = await creditCheckPostResponse.json();
+
+            // Test Call History
+            const callHistoryResponse = await fetch(
+              `/api/calls/history?page=${page}&limit=${limit}`,
+              {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+              }
+            );
+            const callHistoryData = await callHistoryResponse.json();
+
+            // Combine results
+            const combinedResults = {
+              creditBalance: {
+                status: balanceResponse.status,
+                data: balanceData,
+              },
+              creditCheckGet: {
+                status: creditCheckGetResponse.status,
+                data: creditCheckGetData,
+              },
+              creditCheckPost: {
+                status: creditCheckPostResponse.status,
+                data: creditCheckPostData,
+              },
+              callHistory: {
+                status: callHistoryResponse.status,
+                data: callHistoryData,
+              },
+            };
+
+            showResult("allTestsResult", combinedResults);
+          } catch (error) {
+            showResult("allTestsResult", `Error: ${error.message}`, false);
+          }
+        });
+    </script>
+  </body>
+</html>

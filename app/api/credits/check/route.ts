@@ -1,128 +1,156 @@
 import { NextRequest, NextResponse } from "next/server";
-import { hasEnoughCredits } from "@/lib/credits";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { Database } from "@/lib/database.types";
+import { RateService } from "@/lib/rates/RateService";
 import { COST_PER_MINUTE } from "@/lib/stripe";
 
-export async function POST(request: NextRequest) {
+// CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin":
+    process.env.NODE_ENV === "development"
+      ? "http://localhost:3000"
+      : process.env.NEXT_PUBLIC_SITE_URL || "https://zkypee.com",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Credentials": "true",
+};
+
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
+
+export async function GET(request: NextRequest) {
   try {
-    // Create a Supabase client with cookies
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient<Database>({
-      cookies: () => cookieStore,
-    });
+    // Create a Supabase client
+    const supabase = createServerComponentClient({ cookies });
 
-    // Check for Authorization header first (this is what the dial page uses)
+    // Get the current session to identify the user
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    let currentUser = session?.user;
+
+    // Also check the Authorization header for the token
     const authHeader = request.headers.get("Authorization");
-    console.log("Authorization header present:", !!authHeader);
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.substring(7)
+      : null;
 
-    let user = null;
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      // Extract the token
-      const token = authHeader.split(" ")[1];
-      console.log("Token extracted, verifying...");
-
-      // Verify the token
-      const { data: userData, error: tokenError } = await supabase.auth.getUser(
-        token
-      );
-
-      if (tokenError) {
-        console.error("Token verification error:", tokenError);
-        return NextResponse.json(
-          { error: "Unauthorized - Invalid token", hasEnoughCredits: false },
-          { status: 401 }
-        );
-      }
-
-      if (userData?.user) {
-        console.log("User verified from token:", userData.user.id);
-        user = userData.user;
-      } else {
-        console.log("No user data returned from token verification");
+    // If we have a token in the Authorization header, verify it
+    if (token) {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser(token);
+      if (!authError && user) {
+        // Use this user instead of the session user
+        currentUser = user;
       }
     }
 
-    // If no user from token, try to get user from session cookie
-    if (!user) {
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log("Session data from cookie:", !!sessionData?.session);
-
-      if (sessionData?.session?.user) {
-        user = sessionData.session.user;
-        console.log("User authenticated from session cookie:", user.id);
-      }
-    }
-
-    // If still no user, return unauthorized
-    if (!user) {
-      console.log("No authenticated user found");
+    if (!currentUser) {
       return NextResponse.json(
-        { error: "Authentication required", hasEnoughCredits: false },
-        { status: 401 }
+        { error: "You must be logged in to check credit information" },
+        { status: 401, headers: corsHeaders }
       );
     }
 
-    console.log("User authenticated:", user.id);
-
-    const body = await request.json();
-    const { durationMinutes = 10 } = body;
-
-    // Validate input
-    if (!durationMinutes || durationMinutes <= 0) {
+    // Get the phone number from query parameters
+    const phoneNumber = request.nextUrl.searchParams.get("phoneNumber");
+    if (!phoneNumber) {
       return NextResponse.json(
-        { error: "Invalid duration", hasEnoughCredits: false },
-        { status: 400 }
+        { error: "Phone number is required" },
+        { status: 400, headers: corsHeaders }
       );
     }
 
-    // Try to get the user's credit balance
+    // Get the requested duration (default to 1 minute if not specified)
+    const durationParam = request.nextUrl.searchParams.get("duration");
+    const requestedDuration = durationParam ? parseInt(durationParam, 10) : 1;
+
+    console.log(
+      `[API:credits/check] Checking credits for ${requestedDuration} minutes`
+    );
+
+    // Clean and validate phone number
+    const cleanedNumber = phoneNumber.replace(/[\s\(\)\-]/g, "");
+    if (cleanedNumber.length < 4) {
+      return NextResponse.json(
+        {
+          error: "Invalid phone number",
+          details:
+            "Phone number is too short. Please enter a complete phone number with country code.",
+        },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Get user's credit balance directly from the database
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("credit_balance")
-      .eq("id", user.id)
-      .maybeSingle(); // Use maybeSingle instead of single to handle no results
+      .eq("id", currentUser.id)
+      .single();
 
-    let creditBalance = 0;
+    console.log(
+      `[API:credits/check] User credit balance: ${userData?.credit_balance}`
+    );
 
-    // If user doesn't exist in the database, create them with default credits
-    if (userError || !userData) {
-      console.log("User not found in database, creating user record");
-      
-      // Create the user with default credits (5.00)
-      const defaultCredits = 5.00;
-      const { error: insertError } = await supabase
-        .from("users")
-        .insert([{ id: user.id, credit_balance: defaultCredits }]);
-      
-      if (insertError) {
-        console.error("Error creating user record:", insertError);
-        // Continue with default credits even if insert fails
-      } else {
-        console.log(`User created with default balance of ${defaultCredits}`);
-        creditBalance = defaultCredits;
-      }
-    } else {
-      creditBalance = userData?.credit_balance || 0;
-    }
-    
-    const requiredCredits = durationMinutes * COST_PER_MINUTE;
-    
-    console.log(`Credit check for user ${user.id}:`);
-    console.log(`- Current balance: ${creditBalance}`);
-    console.log(`- Required credits: ${requiredCredits} (${durationMinutes} minutes at ${COST_PER_MINUTE}/min)`);
-    console.log(`- Has enough credits: ${creditBalance >= requiredCredits}`);
+    // Get rate information for the phone number
+    const rateService = RateService.getInstance();
+    await rateService.initialize();
+    const rateInfo = rateService.getRateByNumber(cleanedNumber);
 
-    const enoughCredits = creditBalance >= requiredCredits;
+    // Use the found rate or fallback to default
+    const rate = rateInfo.found ? rateInfo.rate : COST_PER_MINUTE;
+    console.log(
+      `[API:credits/check] Rate for ${cleanedNumber}: ${rate}/min (${
+        rateInfo.country || "Unknown"
+      })`
+    );
 
-    return NextResponse.json({ hasEnoughCredits: enoughCredits });
-  } catch (error) {
-    console.error("Error checking credits:", error);
+    // Calculate estimated minutes
+    const creditBalance = userData?.credit_balance ?? 0; // Use actual balance or default to 0 if not found
+    const estimatedMinutes = rateService.calculatePotentialDuration(
+      rate,
+      creditBalance
+    );
+    const requiredCredits = rate * requestedDuration;
+    const hasEnoughCredits = creditBalance >= requiredCredits;
+    const isLowBalance = estimatedMinutes < 10;
+
+    console.log(
+      `[API:credits/check] Required credits: ${requiredCredits}, Has enough: ${hasEnoughCredits}`
+    );
+
+    const response = {
+      hasEnoughCredits,
+      currentBalance: creditBalance,
+      ratePerMinute: rate,
+      requestedDuration,
+      requiredCredits,
+      estimatedMinutes,
+      callHistory: {
+        totalCalls: 0,
+        totalDuration: 0,
+        averageDuration: 0,
+      },
+      country: rateInfo.country,
+      countryCode: rateInfo.countryCode,
+      isLowBalance,
+    };
+
+    console.log(`[API:credits/check] Response:`, response);
+
+    return NextResponse.json(response, { headers: corsHeaders });
+  } catch (error: any) {
+    console.error("Error in credit check API:", error);
     return NextResponse.json(
-      { error: "Failed to check credits", hasEnoughCredits: false },
-      { status: 500 }
+      {
+        error: "Failed to check credit information",
+        details: error.message,
+      },
+      { status: 500, headers: corsHeaders }
     );
   }
 }

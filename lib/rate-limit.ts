@@ -1,57 +1,53 @@
 // A lightweight rate limiter based on LRU cache
 // Adapted from Next.js examples
 
-export interface Options {
+interface RateLimitOptions {
   interval: number;
   tokensPerInterval: number;
   uniqueTokenPerInterval: number;
 }
 
-// In-memory store for rate limits
-// For production, consider using Redis or another distributed store
-const tokenCache = new Map();
+class RateLimiter {
+  private tokens: Map<string, number>;
+  private lastReset: number;
+  private options: RateLimitOptions;
 
-export default function rateLimit(options: Options) {
-  const { interval, tokensPerInterval, uniqueTokenPerInterval } = options;
+  constructor(options: RateLimitOptions) {
+    this.tokens = new Map();
+    this.lastReset = Date.now();
+    this.options = options;
+  }
 
-  return {
-    /**
-     * Check if the current request is within rate limits
-     * @param limit Number of requests allowed per interval
-     * @param token Unique token to identify the request (e.g. IP address)
-     */
-    check: async (limit: number, token: string): Promise<void> => {
-      // Create timestamp for current interval
-      const now = Date.now();
-      const intervalStart = now - (now % interval);
+  async check(key: string): Promise<boolean> {
+    const now = Date.now();
 
-      // Create cache key for this interval
-      const intervalKey = `${token}:${intervalStart}`;
+    // Reset tokens if interval has passed
+    if (now - this.lastReset > this.options.interval) {
+      this.tokens.clear();
+      this.lastReset = now;
+    }
 
-      // Clean up old interval caches to prevent memory leaks
-      if (tokenCache.size > uniqueTokenPerInterval) {
-        // Get keys for cleanup - use Array.from instead of spread operator
-        const keys = Array.from(tokenCache.keys());
+    // Get current token count for this key
+    const currentTokens = this.tokens.get(key) || 0;
 
-        // Remove the oldest entries (25% of max size)
-        const cleanupCount = Math.floor(uniqueTokenPerInterval * 0.25);
-        for (let i = 0; i < cleanupCount && i < keys.length; i++) {
-          tokenCache.delete(keys[i]);
-        }
-      }
+    // If we've exceeded the limit, return false
+    if (currentTokens >= this.options.tokensPerInterval) {
+      return false;
+    }
 
-      // Current count for this interval
-      let currentCount = (tokenCache.get(intervalKey) || 0) as number;
+    // Increment token count
+    this.tokens.set(key, currentTokens + 1);
 
-      // Check if limit exceeded
-      if (currentCount >= limit) {
-        throw new Error("Rate limit exceeded");
-      }
+    // Clean up old tokens if we have too many
+    if (this.tokens.size > this.options.uniqueTokenPerInterval) {
+      const oldestKey = this.tokens.keys().next().value;
+      this.tokens.delete(oldestKey);
+    }
 
-      // Increment counter
-      tokenCache.set(intervalKey, currentCount + 1);
+    return true;
+  }
+}
 
-      return Promise.resolve();
-    },
-  };
+export default function rateLimit(options: RateLimitOptions): RateLimiter {
+  return new RateLimiter(options);
 }

@@ -56,10 +56,14 @@ CREATE TABLE IF NOT EXISTS public.call_logs (
   credits_used DECIMAL(10, 2) NOT NULL,
   call_sid TEXT NOT NULL,
   status TEXT NOT NULL,
+  phone_number TEXT,
+  country TEXT,
+  rate DECIMAL(10, 4),
   
   -- Add a check constraint to ensure duration and credits_used are positive
-  CONSTRAINT positive_duration CHECK (duration_minutes > 0),
-  CONSTRAINT positive_credits_used CHECK (credits_used > 0)
+  CONSTRAINT positive_duration CHECK (duration_minutes >= 0),
+  CONSTRAINT positive_credits_used CHECK (credits_used >= 0),
+  CONSTRAINT positive_rate CHECK (rate >= 0)
 );
 
 -- Create credit_transfers table for Skype credit transfers
@@ -108,6 +112,11 @@ CREATE POLICY "Users can update their own profile"
   FOR UPDATE
   USING (auth.uid() = id);
 
+CREATE POLICY "Users can insert their own profile"
+  ON public.users
+  FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
 -- Create policies for transactions table
 CREATE POLICY "Users can view their own transactions"
   ON public.transactions
@@ -121,7 +130,7 @@ CREATE POLICY "Users can view their own call logs"
   USING (auth.uid() = user_id);
 
 -- Grant necessary permissions to authenticated users
-GRANT SELECT, UPDATE ON public.users TO authenticated;
+GRANT SELECT, UPDATE, INSERT ON public.users TO authenticated;
 GRANT SELECT ON public.transactions TO authenticated;
 GRANT SELECT ON public.call_logs TO authenticated;
 GRANT INSERT, SELECT ON public.credit_transfers TO authenticated; 

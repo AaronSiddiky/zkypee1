@@ -1,20 +1,104 @@
-import { NextResponse } from "next/server";
-
-// Define CORS headers
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*", // Allow all origins for now
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
+import { NextRequest, NextResponse } from "next/server";
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import { Database } from "@/types/supabase";
+import twilio from "twilio";
+import { corsHeaders, handleCors } from "@/lib/cors";
 
 // Handle OPTIONS requests for CORS preflight
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+export async function OPTIONS(request: NextRequest) {
+  return (
+    handleCors(request.method) ||
+    NextResponse.json({}, { headers: corsHeaders })
+  );
 }
 
-// Support both GET and POST for easier testing
-export async function GET(request: Request) {
-  return handleRequest(request);
+/**
+ * Test endpoint to verify Twilio credentials
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // Check if Twilio credentials are set
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+    console.log(`[API:test] Checking Twilio credentials:`, {
+      accountSid: accountSid ? `${accountSid.substring(0, 4)}...` : "missing",
+      authToken: authToken ? "present" : "missing",
+    });
+
+    if (!accountSid || !authToken) {
+      console.error("[API:test] Missing Twilio credentials");
+      return NextResponse.json(
+        { error: "Server configuration error - missing credentials" },
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    // Initialize Twilio client
+    console.log(`[API:test] Initializing Twilio client`);
+    const client = twilio(accountSid, authToken);
+
+    // Try to fetch account info
+    console.log(`[API:test] Fetching account info`);
+    const account = await client.api.accounts(accountSid).fetch();
+
+    // Get account balance
+    console.log(`[API:test] Fetching account balance`);
+    const balance = await client.api.accounts(accountSid).balance.fetch();
+
+    console.log(`[API:test] Account info retrieved successfully:`, {
+      sid: account.sid,
+      friendlyName: account.friendlyName,
+      status: account.status,
+      balance: balance.balance,
+      currency: balance.currency,
+    });
+
+    // Return success
+    return NextResponse.json(
+      {
+        success: true,
+        account: {
+          sid: account.sid,
+          friendlyName: account.friendlyName,
+          status: account.status,
+          balance: balance.balance,
+          currency: balance.currency,
+        },
+      },
+      { headers: corsHeaders }
+    );
+  } catch (error: any) {
+    console.error("[API:test] Error testing Twilio client:", error);
+
+    // Add more detailed error logging
+    if (error.code) {
+      console.error(`[API:test] Error code: ${error.code}`);
+    }
+
+    if (error.status) {
+      console.error(`[API:test] Error status: ${error.status}`);
+    }
+
+    if (error.message) {
+      console.error(`[API:test] Error message: ${error.message}`);
+    }
+
+    // Check if it's a Twilio error
+    if (error.moreInfo) {
+      console.error(`[API:test] Twilio error info: ${error.moreInfo}`);
+    }
+
+    return NextResponse.json(
+      {
+        error: error.message || "Failed to test Twilio client",
+        code: error.code,
+        details: error.stack?.split("\n")[0] || "Unknown error",
+      },
+      { status: 500, headers: corsHeaders }
+    );
+  }
 }
 
 export async function POST(request: Request) {

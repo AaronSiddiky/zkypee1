@@ -2,6 +2,21 @@ import { supabase } from "./supabase";
 import { COST_PER_MINUTE } from "./stripe";
 import { SupabaseClient } from "@supabase/supabase-js";
 
+// Utility functions that were previously in rateUtils.ts
+// Calculate how many minutes a user can call with given credits
+function calculatePotentialDuration(
+  rate: number,
+  availableCredits: number
+): number {
+  if (rate <= 0) return 0;
+  return Math.floor(availableCredits / rate);
+}
+
+// Format a rate for display
+function formatRateDisplay(rate: number): string {
+  return `$${rate.toFixed(2)}/min`;
+}
+
 // Add credits to a user's account
 export async function addCreditsToUser(
   userId: string,
@@ -139,104 +154,330 @@ export async function addCreditsToUser(
   }
 }
 
-// Check if a user has enough credits for a call
+// Updated to use the RateService for more accurate rates
 export async function hasEnoughCredits(
   userId: string,
-  durationMinutes: number
+  durationMinutes: number,
+  phoneNumber?: string
 ) {
-  console.log(`Checking if user ${userId} has enough credits for ${durationMinutes} minutes`);
-  const requiredCredits = durationMinutes * COST_PER_MINUTE;
-  console.log(`Required credits: ${requiredCredits} (${durationMinutes} minutes at ${COST_PER_MINUTE}/min)`);
+  console.log(
+    `[hasEnoughCredits] Checking if user ${userId} has enough credits for ${durationMinutes} minutes with phone ${
+      phoneNumber || "default"
+    }`
+  );
 
-  // Try to get the user's credit balance
-  const { data: user, error } = await supabase
-    .from("users")
-    .select("credit_balance")
-    .eq("id", userId)
-    .maybeSingle(); // Use maybeSingle instead of single
-
-  // If user doesn't exist, create them with default credits
-  if (error || !user) {
-    console.log("User not found in database, creating user record");
-    
-    // Default credits for new users
-    const defaultCredits = 5.00;
-    
-    // Create the user with default credits
-    const { error: insertError } = await supabase
+  try {
+    const { data: users, error: userError } = await supabase
       .from("users")
-      .insert([{ id: userId, credit_balance: defaultCredits }]);
-    
-    if (insertError) {
-      console.error("Error creating user record:", insertError);
-      // Continue with default credits even if insert fails
-    } else {
-      console.log(`User created with default balance of ${defaultCredits}`);
-    }
-    
-    // Check if default credits are enough
-    console.log(`User credit balance (default): ${defaultCredits}`);
-    console.log(`Has enough credits: ${defaultCredits >= requiredCredits}`);
-    
-    return defaultCredits >= requiredCredits;
-  }
+      .select("credit_balance")
+      .eq("id", userId);
 
-  const creditBalance = user?.credit_balance || 0;
-  console.log(`User credit balance: ${creditBalance}`);
-  console.log(`Has enough credits: ${creditBalance >= requiredCredits}`);
-  
-  return creditBalance >= requiredCredits;
+    if (userError) {
+      console.error(
+        `[hasEnoughCredits] Error fetching user: ${userError.code} - ${userError.message}`
+      );
+      throw new Error(`Error fetching user: ${userError.message}`);
+    }
+
+    if (!users || users.length === 0) {
+      console.log(`[hasEnoughCredits] User not found with ID: ${userId}`);
+      return false;
+    }
+
+    const creditBalance = parseFloat(users[0].credit_balance);
+    console.log(`[hasEnoughCredits] User credit balance: ${creditBalance}`);
+
+    // If a phone number is provided, use the RateService to get the specific rate
+    let rate = COST_PER_MINUTE; // Default fallback rate
+
+    if (phoneNumber) {
+      try {
+        const rateInfo = await fetchRateForNumber(phoneNumber);
+        rate = rateInfo.rate;
+        console.log(
+          `[hasEnoughCredits] Found rate for ${phoneNumber}: ${rate}/min (${rateInfo.country})`
+        );
+      } catch (error) {
+        console.error(
+          "[hasEnoughCredits] Error fetching rate information:",
+          error
+        );
+        // Fall back to default rate if there's an error
+      }
+    }
+
+    // Calculate required credits
+    const requiredCredits = rate * durationMinutes;
+
+    console.log(
+      `[hasEnoughCredits] User ${userId} has ${creditBalance} credits, needs ${requiredCredits} for ${durationMinutes} minutes at rate ${rate}/min, result: ${
+        creditBalance >= requiredCredits
+      }`
+    );
+
+    return creditBalance >= requiredCredits;
+  } catch (error) {
+    console.error("[hasEnoughCredits] Error checking credits:", error);
+    throw error;
+  }
 }
 
-// Deduct credits after a call
+/**
+ * Check credit balance and calculate estimated talk time
+ * Returns detailed information about available credits and call duration
+ */
+export async function getCreditCallInfo(
+  userId: string,
+  phoneNumber: string
+): Promise<{
+  hasEnoughCredits: boolean;
+  creditBalance: number;
+  estimatedMinutes: number;
+  rate: number;
+  requiredCredits: number;
+  isLowBalance: boolean;
+  country?: string;
+  countryCode?: string;
+  formattedRate?: string;
+}> {
+  console.log(
+    `[getCreditCallInfo] Starting for userId=${userId}, phoneNumber=${phoneNumber}`
+  );
+  try {
+    // Get user's credit balance
+    console.log(`[getCreditCallInfo] Fetching user credit balance`);
+    const { data: users, error: userError } = await supabase
+      .from("users")
+      .select("credit_balance")
+      .eq("id", userId);
+
+    if (userError) {
+      console.error(
+        `[getCreditCallInfo] Error fetching user: ${userError.message}`,
+        userError
+      );
+      throw new Error(`Error fetching user: ${userError.message}`);
+    }
+
+    if (!users || users.length === 0) {
+      console.error(`[getCreditCallInfo] User not found with ID: ${userId}`);
+      throw new Error(`User not found with ID: ${userId}`);
+    }
+
+    const creditBalance = parseFloat(users[0].credit_balance);
+    console.log(`[getCreditCallInfo] User credit balance: ${creditBalance}`);
+
+    // Get rate information for the destination
+    console.log(
+      `[getCreditCallInfo] Initializing rate service for phoneNumber: ${phoneNumber}`
+    );
+    try {
+      const rateInfo = await fetchRateForNumber(phoneNumber);
+      const rate = rateInfo.rate;
+      console.log(`[getCreditCallInfo] Using rate of ${rate} per minute`);
+
+      // Calculate estimated talk time based on available credits
+      const estimatedMinutes = calculatePotentialDuration(rate, creditBalance);
+
+      // Check if user has enough credits for at least 1 minute
+      const hasEnoughForOneMinute = creditBalance >= rate;
+
+      // Calculate required credits for 1 minute
+      const requiredCredits = rate;
+
+      // Check if balance is running low (less than 10 minutes of talk time)
+      const isLowBalance = estimatedMinutes < 10;
+
+      return {
+        hasEnoughCredits: hasEnoughForOneMinute,
+        creditBalance,
+        estimatedMinutes,
+        rate,
+        requiredCredits,
+        isLowBalance,
+        country: rateInfo.country,
+        countryCode: rateInfo.countryCode,
+        formattedRate: formatRateDisplay(rate),
+      };
+    } catch (rateError: any) {
+      console.error(`[getCreditCallInfo] Error in rate service:`, rateError);
+      throw new Error(`Error getting rate information: ${rateError.message}`);
+    }
+  } catch (error: any) {
+    console.error(`[getCreditCallInfo] Unexpected error:`, error);
+    throw error;
+  }
+}
+
+// Add a function to fetch rate from our API
+async function fetchRateForNumber(phoneNumber: string): Promise<{
+  rate: number;
+  country: string;
+  countryCode?: string;
+}> {
+  try {
+    const response = await fetch(
+      `/api/rates/get-rate?phoneNumber=${encodeURIComponent(phoneNumber)}`
+    );
+
+    if (!response.ok) {
+      return { rate: COST_PER_MINUTE, country: "Unknown" };
+    }
+
+    const data = await response.json();
+    if (data.success && data.rate) {
+      return {
+        rate: data.rate,
+        country: data.country || "Unknown",
+        countryCode: data.countryCode,
+      };
+    }
+
+    return { rate: COST_PER_MINUTE, country: "Unknown" };
+  } catch (error) {
+    console.error("Error fetching rate information:", error);
+    return { rate: COST_PER_MINUTE, country: "Unknown" };
+  }
+}
+
+// Updated to use the RateService for more accurate rates
 export async function deductCreditsForCall(
   userId: string,
   durationMinutes: number,
-  callSid: string
+  callSid: string,
+  phoneNumber?: string
 ) {
-  const creditsToDeduct = durationMinutes * COST_PER_MINUTE;
+  console.log(
+    `[deductCreditsForCall] Starting credit deduction for user ${userId}:`,
+    {
+      durationMinutes,
+      callSid,
+      phoneNumber,
+    }
+  );
 
-  // Start a transaction
-  const { data: user, error: userError } = await supabase
-    .from("users")
-    .select("credit_balance")
-    .eq("id", userId)
-    .single();
+  try {
+    // Input validation
+    if (durationMinutes <= 0) {
+      console.log(
+        `[deductCreditsForCall] Invalid duration: ${durationMinutes}`
+      );
+      return;
+    }
 
-  if (userError) {
-    throw new Error(`Error fetching user: ${userError.message}`);
+    // Get the user's current credit balance
+    const { data: users, error: userError } = await supabase
+      .from("users")
+      .select("credit_balance")
+      .eq("id", userId);
+
+    if (userError) {
+      console.error(
+        `[deductCreditsForCall] Error fetching user: ${userError.code} - ${userError.message}`
+      );
+      throw new Error(`Error fetching user: ${userError.message}`);
+    }
+
+    if (!users || users.length === 0) {
+      console.log(`[deductCreditsForCall] User not found with ID: ${userId}`);
+      throw new Error(`User not found with ID: ${userId}`);
+    }
+
+    // Determine the appropriate rate to charge
+    let rate = COST_PER_MINUTE; // Default fallback rate
+
+    if (phoneNumber) {
+      try {
+        // Use our new API endpoint instead of RateService
+        const rateInfo = await fetchRateForNumber(phoneNumber);
+        rate = rateInfo.rate;
+        console.log(`[deductCreditsForCall] Using rate of ${rate}/min`);
+      } catch (error) {
+        console.error(
+          "[deductCreditsForCall] Error fetching rate information:",
+          error
+        );
+        // Fall back to default rate if there's an error
+      }
+    }
+
+    // Calculate credits to deduct (rounded to 2 decimal places for billing accuracy)
+    const creditsToDeduct = parseFloat((rate * durationMinutes).toFixed(2));
+    const currentBalance = parseFloat(users[0].credit_balance);
+    const newBalance = Math.max(
+      0,
+      parseFloat((currentBalance - creditsToDeduct).toFixed(2))
+    );
+
+    console.log(`[deductCreditsForCall] Credit calculation:`, {
+      currentBalance,
+      creditsToDeduct,
+      newBalance,
+      rate,
+    });
+
+    // Update user's credit balance - this is the most important part
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ credit_balance: newBalance })
+      .eq("id", userId);
+
+    if (updateError) {
+      console.error(
+        `[deductCreditsForCall] Error updating user: ${updateError.code} - ${updateError.message}`
+      );
+      throw new Error(`Error updating user: ${updateError.message}`);
+    }
+
+    // Only try to update essential fields in the call log
+    try {
+      const { error: logError } = await supabase
+        .from("call_logs")
+        .update({
+          duration_minutes: durationMinutes,
+          credits_used: creditsToDeduct,
+          status: "completed",
+        })
+        .eq("call_sid", callSid)
+        .eq("user_id", userId);
+
+      if (logError) {
+        console.error(
+          `[deductCreditsForCall] Error updating call log: ${logError.code} - ${logError.message}`
+        );
+        // Don't throw here, we've already updated the credits
+        console.log(
+          "[deductCreditsForCall] Failed to update call log but credits were deducted"
+        );
+      }
+    } catch (logError) {
+      console.error(
+        "[deductCreditsForCall] Error updating call log:",
+        logError
+      );
+      console.log(
+        "[deductCreditsForCall] Failed to update call log but credits were deducted"
+      );
+    }
+
+    console.log(
+      `[deductCreditsForCall] Successfully completed credit deduction:`,
+      {
+        userId,
+        creditsDeducted: creditsToDeduct,
+        newBalance,
+      }
+    );
+
+    return {
+      success: true,
+      creditsDeducted: creditsToDeduct,
+      newBalance,
+    };
+  } catch (error) {
+    console.error("[deductCreditsForCall] Error:", error);
+    throw error;
   }
-
-  if ((user.credit_balance || 0) < creditsToDeduct) {
-    throw new Error("Insufficient credits");
-  }
-
-  // Update user's credit balance
-  const { error: updateError } = await supabase
-    .from("users")
-    .update({
-      credit_balance: (user.credit_balance || 0) - creditsToDeduct,
-    })
-    .eq("id", userId);
-
-  if (updateError) {
-    throw new Error(`Error updating user credits: ${updateError.message}`);
-  }
-
-  // Record the call log
-  const { error: callLogError } = await supabase.from("call_logs").insert({
-    user_id: userId,
-    duration_minutes: durationMinutes,
-    credits_used: creditsToDeduct,
-    call_sid: callSid,
-    status: "completed",
-  });
-
-  if (callLogError) {
-    throw new Error(`Error recording call log: ${callLogError.message}`);
-  }
-
-  return true;
 }
 
 // Get user's credit balance
@@ -320,5 +561,54 @@ export async function getUserCreditBalance(
     console.error("Error in getUserCreditBalance:", error);
     // Return 0 credits in case of any error
     return 0;
+  }
+}
+
+/**
+ * Get a user's call history with detailed information
+ */
+export async function getUserCallHistory(
+  userId: string,
+  limit: number = 10,
+  offset: number = 0
+): Promise<{
+  calls: any[];
+  total: number;
+  hasMore: boolean;
+}> {
+  try {
+    // Get count of all calls for this user
+    const { count, error: countError } = await supabase
+      .from("call_logs")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    if (countError) {
+      throw new Error(`Error counting calls: ${countError.message}`);
+    }
+
+    // Get the requested page of call logs with most recent first
+    const { data: calls, error: callsError } = await supabase
+      .from("call_logs")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (callsError) {
+      throw new Error(`Error fetching call logs: ${callsError.message}`);
+    }
+
+    const total = count || 0;
+    const hasMore = total > offset + limit;
+
+    return {
+      calls: calls || [],
+      total,
+      hasMore,
+    };
+  } catch (error) {
+    console.error("Error fetching call history:", error);
+    throw error;
   }
 }

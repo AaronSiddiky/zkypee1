@@ -1,0 +1,35 @@
+===== Twilio TwiML App Configuration =====
+
+1. Go to the Twilio Console: https://www.twilio.com/console/voice/twiml/apps
+
+2. Create a new TwiML App or edit your existing one:
+   - Friendly Name: Programmable Voice App
+   
+3. Under Voice Configuration:
+   - Request URL: https://e38d-128-59-178-118.ngrok-free.app/api/twilio/voice
+   - Request Method: HTTP POST
+   - Status Callback URL: https://e38d-128-59-178-118.ngrok-free.app/api/twilio/call-status
+   - Status Callback Method: HTTP POST
+   
+4. Save your changes
+
+5. Copy the TwiML App SID and add it to your .env file:
+   TWILIO_TWIML_APP_SID=your-app-sid
+
+===== Environment Variables =====
+
+Make sure you have these environment variables set:
+
+TWILIO_ACCOUNT_SID=your_account_sid
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_API_KEY=your_api_key
+TWILIO_API_SECRET=your_api_secret
+TWILIO_TWIML_APP_SID=your_twiml_app_sid
+TWILIO_PHONE_NUMBER=your_verified_number
+
+===== Ngrok Configuration =====
+
+When using ngrok for local development:
+1. Start ngrok: ngrok http 3000
+2. Copy the HTTPS URL (e.g., https://e38d-128-59-178-118.ngrok-free.app)
+3. Update your TwiML App with this URL 

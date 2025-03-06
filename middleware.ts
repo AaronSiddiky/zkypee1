@@ -3,8 +3,10 @@ import type { NextRequest } from "next/server";
 
 // List of allowed origins for CORS
 const allowedOrigins = [
-  process.env.NEXT_PUBLIC_BASE_URL || "https://yourdomain.com", // Main app domain
+  process.env.NEXT_PUBLIC_BASE_URL || "https://zkypee.com", // Main app domain
   "http://localhost:3000", // Local development
+  "https://zkypee.com",
+  "https://www.zkypee.com",
 ];
 
 export function middleware(request: NextRequest) {
