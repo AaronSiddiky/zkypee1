@@ -78,15 +78,15 @@ export default function TwilioVoiceClient() {
           conn.volume(1);
 
           // Set up connection event handlers
-          conn.on("volume", (vol) => {
+          conn.on("volume", (vol: number) => {
             console.log(`Volume changed: ${vol}`);
           });
 
-          conn.on("warning", (warning) => {
+          conn.on("warning", (warning: { message: string }) => {
             console.warn(`Connection warning: ${warning.message}`);
           });
 
-          conn.on("error", (error) => {
+          conn.on("error", (error: { message: string }) => {
             console.error(`Connection error: ${error.message}`);
           });
 
@@ -148,9 +148,11 @@ export default function TwilioVoiceClient() {
           .then(() =>
             console.log(`Audio output set to: ${selectedAudioOutput}`)
           )
-          .catch((err) => console.error("Error setting audio output:", err));
+          .catch((err: Error) =>
+            console.error("Error setting audio output:", err)
+          );
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error changing audio output:", err);
     }
   }, [selectedAudioOutput, connectionRef.current]);
