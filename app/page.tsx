@@ -31,7 +31,7 @@ export default function HomePage() {
                 }}
                 transition={{ duration: 0.5 }}
               >
-                Skype is gone
+                Skype is shutting down
               </motion.div>
 
               <AnimatePresence>
@@ -47,9 +47,28 @@ export default function HomePage() {
                 )}
               </AnimatePresence>
             </h1>
-            <p className="text-lg sm:text-xl mb-6 sm:mb-8">
-              Call any landline or phone with the cheapest rates available
+            <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-blue-600">
+              The Best Skype Alternative
+            </h2>
+            <p className="text-lg sm:text-xl mb-4">
+              Looking for a Skype replacement? Zkypee offers everything you
+              loved about Skype but better - call any landline or mobile phone
+              with the cheapest rates available
             </p>
+
+            {/* Features summary */}
+            <div className="mb-6 text-left">
+              <ul className="list-disc list-inside text-gray-700">
+                <li className="mb-1">
+                  Free Skype replacement with no compromises
+                </li>
+                <li className="mb-1">Transfer your existing Skype credits</li>
+                <li className="mb-1">
+                  Crystal clear calls to phones worldwide
+                </li>
+                <li className="mb-1">No subscription required</li>
+              </ul>
+            </div>
 
             {/* Cost indicator */}
             <p className="text-red-600 font-bold text-lg sm:text-xl mb-4 text-center lg:text-left">

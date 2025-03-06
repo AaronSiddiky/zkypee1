@@ -12,11 +12,13 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Zkypee",
-    default: "Zkypee | Connect with Anyone, Anywhere",
+    template: "%s | Best Skype Alternative - Zkypee",
+    default: "Zkypee | Best Skype Alternative | Free Skype Replacement",
   },
   description:
-    "Make high-quality voice and video calls to anyone in the world with Zkypee.",
+    "Looking for the best Skype alternative since Skype is shutting down? Zkypee is the perfect free Skype replacement with high-quality voice and video calls to anyone in the world.",
+  keywords:
+    "Best Skype alternative, Skype shutting down alternative, Free Skype replacement, Skype replacement, video calls, voice calls",
 };
 
 // Separate viewport export

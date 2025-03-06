@@ -16,10 +16,31 @@ export default function FeaturesPage() {
       >
         <h1 className="text-4xl font-bold mb-4">
           <span className="text-black">Zkypee </span>
-          <span className="text-blue-500">Features</span>
+          <span className="text-blue-500">
+            Features - Best Skype Alternative
+          </span>
         </h1>
         <p className="text-gray-600 mt-4">
-          Everything you need for seamless communication
+          Everything you need in a <strong>free Skype replacement</strong> now
+          that <strong>Skype is shutting down</strong>
+        </p>
+      </motion.div>
+
+      {/* Skype Alternative Banner */}
+      <motion.div
+        className="bg-blue-50 border border-blue-100 rounded-lg p-6 mb-8 text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        <h2 className="text-2xl font-semibold text-blue-700 mb-2">
+          Why Zkypee is the Best Skype Alternative
+        </h2>
+        <p className="text-gray-700">
+          With Skype shutting down many features and reducing support, Zkypee
+          offers the perfect free Skype replacement that maintains all the
+          functionality you love while adding modern improvements and better
+          call quality.
         </p>
       </motion.div>
 

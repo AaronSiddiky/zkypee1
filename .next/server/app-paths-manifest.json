@@ -1,12 +1,6 @@
 {
-  "/dial/page": "app/dial/page.js",
   "/page": "app/page.js",
+  "/dial/page": "app/dial/page.js",
   "/credits/page": "app/credits/page.js",
-  "/api/twilio/phone-number/route": "app/api/twilio/phone-number/route.js",
-  "/api/twilio/token/route": "app/api/twilio/token/route.js",
-  "/api/credits/check/route": "app/api/credits/check/route.js",
-  "/api/rates/get-rate/route": "app/api/rates/get-rate/route.js",
-  "/api/rates/lookup/route": "app/api/rates/lookup/route.js",
-  "/api/twilio/voice/route": "app/api/twilio/voice/route.js",
-  "/api/twilio/call-status/route": "app/api/twilio/call-status/route.js"
+  "/api/twilio/token/route": "app/api/twilio/token/route.js"
 }
