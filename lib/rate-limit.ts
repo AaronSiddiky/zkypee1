@@ -41,7 +41,9 @@ class RateLimiter {
     // Clean up old tokens if we have too many
     if (this.tokens.size > this.options.uniqueTokenPerInterval) {
       const oldestKey = this.tokens.keys().next().value;
-      this.tokens.delete(oldestKey);
+      if (oldestKey !== undefined) {
+        this.tokens.delete(oldestKey);
+      }
     }
 
     return true;
