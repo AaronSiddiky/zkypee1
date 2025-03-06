@@ -13,7 +13,10 @@ import { COST_PER_MINUTE } from "@/lib/stripe";
 import { supabase } from "@/lib/supabase";
 import { Device } from "@twilio/voice-sdk";
 import type { Call } from "@twilio/voice-sdk";
-import { registerTokenFilterServiceWorker } from "@/lib/serviceWorker";
+import {
+  registerTokenFilterServiceWorker,
+  unregisterTokenFilter,
+} from "@/lib/serviceWorker";
 
 // Constants for token rotation
 const TOKEN_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -188,9 +191,26 @@ interface TwilioContextType {
 
 const TwilioContext = createContext<TwilioContextType | undefined>(undefined);
 
-// Register the token filter service worker when in browser environment
+// Unregister any existing service worker first to fix any issues
 if (typeof window !== "undefined") {
-  registerTokenFilterServiceWorker();
+  // Immediately unregister any existing service worker to fix current issues
+  (async () => {
+    try {
+      const unregistered = await unregisterTokenFilter();
+      if (unregistered) {
+        console.log("Successfully unregistered problematic service worker");
+        // Wait a moment before registering the new one
+        setTimeout(() => {
+          registerTokenFilterServiceWorker();
+        }, 1000);
+      } else {
+        // If no service worker was unregistered, register the new one directly
+        registerTokenFilterServiceWorker();
+      }
+    } catch (error) {
+      console.error("Error handling service worker:", error);
+    }
+  })();
 }
 
 export function TwilioProvider({ children }: { children: React.ReactNode }) {

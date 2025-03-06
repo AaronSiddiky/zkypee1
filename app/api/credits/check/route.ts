@@ -9,7 +9,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin":
     process.env.NODE_ENV === "development"
       ? "http://localhost:3000"
-      : process.env.NEXT_PUBLIC_SITE_URL || "https://zkypee.com",
+      : process.env.NEXT_PUBLIC_SITE_URL || "",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Credentials": "true",

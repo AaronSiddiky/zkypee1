@@ -5,9 +5,7 @@ import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase client with the latest API key
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "https://xjslipdzcbdjteqnawpt.supabase.co";
+const supabaseUrl = "https://xjslipdzcbdjteqnawpt.supabase.co";
 const supabaseAnonKey =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhqc2xpcGR6Y2JkanRlcW5hd3B0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA5MzcxMDMsImV4cCI6MjA1NjUxMzEwM30.yfgMsfGMzf1KE7XGWIunR5oKZBr3SKYBQv4anLcqCA8";
 const supabase = createClient(supabaseUrl, supabaseAnonKey);

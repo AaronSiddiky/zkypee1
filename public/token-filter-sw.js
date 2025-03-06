@@ -9,32 +9,18 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(clients.claim()); // Take control of all clients
 });
 
-// Function to check if a request is to Twilio or Supabase
-function isSensitiveRequest(url) {
+// Function to check if a request is to Twilio
+function isTwilioRequest(url) {
   return (
     url.includes("twilio.com") ||
     url.includes("twiliocdn.com") ||
-    url.includes("twilio.io") ||
-    url.includes("supabase.co") ||
-    url.includes("zkypee.com/api")
+    url.includes("twilio.io")
   );
 }
 
-// Function to check if a request contains a user ID
-function containsUserId(url) {
-  // Check for UUID pattern in URL
-  const uuidPattern =
-    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
-  return uuidPattern.test(url);
-}
-
-// Function to redact user IDs from URLs
-function redactUserIds(url) {
-  // Replace UUIDs with [REDACTED-USER-ID]
-  return url.replace(
-    /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/gi,
-    "[REDACTED-USER-ID]"
-  );
+// Function to check if a request is to Supabase
+function isSupabaseRequest(url) {
+  return url.includes("supabase.co") || url.includes("supabase.in");
 }
 
 // Function to check if a response might contain a token
@@ -90,8 +76,8 @@ function redactTokens(jsonString) {
 self.addEventListener("fetch", (event) => {
   const request = event.request;
 
-  // Only intercept sensitive requests
-  if (isSensitiveRequest(request.url)) {
+  // Only intercept Twilio requests, EXCLUDE Supabase requests
+  if (isTwilioRequest(request.url) && !isSupabaseRequest(request.url)) {
     // Clone the request to avoid consuming it
     const requestClone = request.clone();
 
@@ -139,41 +125,26 @@ self.addEventListener("fetch", (event) => {
       // We can't intercept WebSocket traffic, but we can log that it's happening
       console.log("WebSocket connection detected:", request.url);
     }
-    // For GET requests with sensitive information
-    else if (request.url.includes("token=") || containsUserId(request.url)) {
-      // Create a modified URL
-      let modifiedUrl = request.url;
-
-      // Redact token parameters if present
-      if (modifiedUrl.includes("token=")) {
-        const url = new URL(modifiedUrl);
-        if (url.searchParams.has("token")) {
-          url.searchParams.set("token", "[REDACTED]");
-        }
-        modifiedUrl = url.toString();
+    // For GET requests, check if the URL contains token parameters
+    else if (request.url.includes("token=")) {
+      const url = new URL(request.url);
+      if (url.searchParams.has("token")) {
+        url.searchParams.set("token", "[REDACTED]");
       }
 
-      // Redact user IDs if present
-      if (containsUserId(modifiedUrl)) {
-        modifiedUrl = redactUserIds(modifiedUrl);
-      }
+      // Create a new request with the modified URL
+      const filteredRequest = new Request(url.toString(), {
+        method: request.method,
+        headers: request.headers,
+        mode: request.mode,
+        credentials: request.credentials,
+        cache: request.cache,
+        redirect: request.redirect,
+        referrer: request.referrer,
+        integrity: request.integrity,
+      });
 
-      // If URL was modified, create a new request
-      if (modifiedUrl !== request.url) {
-        // Create a new request with the modified URL
-        const filteredRequest = new Request(modifiedUrl, {
-          method: request.method,
-          headers: request.headers,
-          mode: request.mode,
-          credentials: request.credentials,
-          cache: request.cache,
-          redirect: request.redirect,
-          referrer: request.referrer,
-          integrity: request.integrity,
-        });
-
-        event.respondWith(fetch(filteredRequest));
-      }
+      event.respondWith(fetch(filteredRequest));
     }
   }
 });
