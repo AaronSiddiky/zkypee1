@@ -97,6 +97,9 @@ function NavbarContent() {
               >
                 Buy Credits
               </Link>
+              <Link href="/about" className="text-gray-700 hover:text-blue-500">
+                About Us
+              </Link>
             </nav>
 
             {/* Profile login/logout button - positioned at the far right */}
@@ -205,6 +208,29 @@ function NavbarContent() {
                   </svg>
                 </span>
                 Buy Credits
+              </Link>
+
+              {/* About Us link */}
+              <Link
+                href="/about"
+                className="text-gray-700 hover:text-blue-500 py-2 font-medium text-center flex items-center justify-center"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="mr-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </span>
+                About Us
               </Link>
 
               {/* Call Now button - made more prominent */}
