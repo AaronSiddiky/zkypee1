@@ -1,11 +1,10 @@
 {
+  "/_not-found/page": "app/_not-found/page.js",
   "/page": "app/page.js",
-  "/credits/page": "app/credits/page.js",
-  "/credits/success/page": "app/credits/success/page.js",
-  "/credits/thank-you/page": "app/credits/thank-you/page.js",
-  "/api/twilio/token/route": "app/api/twilio/token/route.js",
   "/dial/page": "app/dial/page.js",
-  "/api/twilio/phone-number/route": "app/api/twilio/phone-number/route.js",
-  "/api/credits/checkout/route": "app/api/credits/checkout/route.js",
-  "/api/credits/success/route": "app/api/credits/success/route.js"
+  "/api/twilio/token/route": "app/api/twilio/token/route.js",
+  "/signup/page": "app/signup/page.js",
+  "/transfer/page": "app/transfer/page.js",
+  "/blog/page": "app/blog/page.js",
+  "/blog/skype-shutting-down/page": "app/blog/skype-shutting-down/page.js"
 }
