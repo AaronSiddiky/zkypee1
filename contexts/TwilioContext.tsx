@@ -239,8 +239,9 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
 
   // API URL for local development or production
   const apiUrl =
-    process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "") ||
-    window.location.origin;
+    typeof window !== "undefined" && window.location.hostname === "localhost"
+      ? `${window.location.protocol}//${window.location.hostname}:3000`
+      : window.location.origin;
 
   // Call information
   const [debugInfo, setDebugInfo] = useState<{

@@ -41,10 +41,8 @@ export async function POST(request: NextRequest) {
     // Initialize Twilio client
     const client = twilio(accountSid, authToken);
 
-    // Use environment variable for base URL
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "") ||
-      "https://zkypee.com";
+    // Use ngrok URL for Twilio to reach our local server
+    const baseUrl = "https://www.zkypee.com/";
     const twimlUrl = `${baseUrl}/api/twilio/twiml?To=${encodeURIComponent(
       phoneNumber
     )}`;
