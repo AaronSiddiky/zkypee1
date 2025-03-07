@@ -10,8 +10,9 @@ export async function POST(request: Request) {
     const data = await request.formData();
     const toValue = data.get("To");
     const to = toValue?.toString() || "";
-    const host = request.headers.get("host") || "localhost:3000";
-    const protocol = host.includes("localhost") ? "http" : "https";
+    const baseUrl =
+      process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "") ||
+      "https://zkypee.com";
 
     const twiml = new VoiceResponse();
 
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
         answerOnBridge: true,
         record: "record-from-answer",
         timeout: 30,
-        action: `${protocol}://${host}/api/twilio/call-status`,
+        action: `${baseUrl}/api/twilio/call-status`,
         method: "POST",
       });
 
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
             "answered",
             "completed",
           ],
-          statusCallback: `${protocol}://${host}/api/twilio/call-status`,
+          statusCallback: `${baseUrl}/api/twilio/call-status`,
           statusCallbackMethod: "POST",
         },
         to
