@@ -9,6 +9,7 @@ import CreditBalance from "../components/CreditBalance";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import InactivityWarningModal from "../components/InactivityWarningModal";
+import { Analytics } from "@vercel/analytics/react";
 
 function NavbarContent() {
   const { user, loading, signOut } = useAuth();
@@ -353,6 +354,7 @@ export default function ClientLayout({
       <TwilioProvider>
         <NavbarContent />
         <InactivityWarningModal />
+        <Analytics />
         {children}
       </TwilioProvider>
     </AuthProvider>
