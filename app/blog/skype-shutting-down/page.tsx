@@ -495,7 +495,7 @@ export default function SkypeShuttingDownBlog() {
           and a seamless transition.
         </p>
         <Link
-          href="/signup"
+          href="/"
           className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md"
         >
           Get Started for Free
