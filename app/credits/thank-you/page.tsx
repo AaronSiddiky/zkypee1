@@ -4,13 +4,22 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useSearchParams } from "next/navigation";
 
 export default function ThankYouPage() {
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showWarning, setShowWarning] = useState(false);
   const { session, user, loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Check if credits were added successfully
+    const creditsAdded = searchParams.get("creditsAdded");
+    if (creditsAdded === "false") {
+      setShowWarning(true);
+    }
+
     // Only fetch data if the user is authenticated
     if (!authLoading && session && user) {
       fetchCreditBalance();
@@ -18,7 +27,7 @@ export default function ThankYouPage() {
       // If auth is done loading and we don't have a session, we're not authenticated
       setIsLoading(false);
     }
-  }, [session, user, authLoading]);
+  }, [session, user, authLoading, searchParams]);
 
   const fetchCreditBalance = async () => {
     try {
@@ -34,19 +43,22 @@ export default function ThankYouPage() {
 
       // Directly query the users table in Supabase
       const { data, error } = await supabase
-        .from('users')
-        .select('credit_balance')
-        .eq('id', user.id)
+        .from("users")
+        .select("credit_balance")
+        .eq("id", user.id)
         .single();
-      
+
       if (error) {
         console.error("Error fetching credit balance from Supabase:", error);
         throw new Error(`Failed to fetch credit balance: ${error.message}`);
       }
-      
+
       // If user exists, use their credit balance, otherwise default to 0
       if (data) {
-        console.log("Credit balance fetched successfully:", data.credit_balance);
+        console.log(
+          "Credit balance fetched successfully:",
+          data.credit_balance
+        );
         setCreditBalance(data.credit_balance || 0);
       } else {
         console.log("User not found in database, setting credit balance to 0");
@@ -82,6 +94,18 @@ export default function ThankYouPage() {
         Your payment has been processed successfully and your credits have been
         added to your account.
       </p>
+
+      {showWarning && (
+        <div className="mb-4 p-4 bg-yellow-100 text-yellow-800 rounded-md">
+          <p className="font-medium">
+            Note: There might have been an issue adding credits to your account.
+          </p>
+          <p>
+            Don't worry, your payment was successful and our team has been
+            notified. Your credits will be added shortly.
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="mb-8">

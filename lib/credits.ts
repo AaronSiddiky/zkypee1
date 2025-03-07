@@ -1,6 +1,7 @@
-import { supabase } from "./supabase";
+import { supabase, supabaseAdmin } from "./supabase";
 import { COST_PER_MINUTE } from "./stripe";
 import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "./database.types";
 
 // Utility functions that were previously in rateUtils.ts
 // Calculate how many minutes a user can call with given credits
@@ -28,10 +29,16 @@ export async function addCreditsToUser(
     `Starting addCreditsToUser for user ${userId}, adding ${creditsToAdd} credits`
   );
 
+  // Use the admin client if available, otherwise fall back to regular client
+  const db: SupabaseClient<Database> = supabaseAdmin || supabase;
+  console.log(
+    `Using ${supabaseAdmin === db ? "admin" : "regular"} Supabase client`
+  );
+
   try {
     // Fetch the user's current credit balance
     console.log(`Fetching credit balance for user ${userId}`);
-    const { data: users, error: userError } = await supabase
+    const { data: users, error: userError } = await db
       .from("users")
       .select("credit_balance")
       .eq("id", userId);
@@ -44,13 +51,14 @@ export async function addCreditsToUser(
     }
 
     let currentBalance = 0;
+    let userUpdated = false;
 
     // Check if user exists
     if (!users || users.length === 0) {
       console.log(`User not found with ID: ${userId}, will create new user`);
 
       // Create new user with the initial credits
-      const { error: insertError } = await supabase.from("users").insert([
+      const { error: insertError } = await db.from("users").insert([
         {
           id: userId,
           credit_balance: creditsToAdd,
@@ -58,33 +66,21 @@ export async function addCreditsToUser(
       ]);
 
       if (insertError) {
-        // If we can't create the user due to RLS, we'll use the service function approach
         console.error(`Error creating user: ${insertError.message}`);
-        console.log("Recording transaction without creating user");
 
-        // Just record the transaction
-        const { error: transactionError } = await supabase
-          .from("transactions")
-          .insert({
-            user_id: userId,
-            amount,
-            credits_added: creditsToAdd,
-            payment_intent_id: paymentIntentId,
-            status: "completed",
-          });
-
-        if (transactionError) {
-          console.error(
-            `Error recording transaction: ${transactionError.message}`
+        // If we're using the regular client, this might be due to RLS
+        if (db === supabase) {
+          console.warn(
+            "Using regular client with RLS restrictions - this may cause permission issues"
           );
-        } else {
-          console.log(`Transaction recorded successfully`);
         }
 
-        return true; // Return success even though we couldn't create the user
+        console.log("Recording transaction without creating user");
+        userUpdated = false;
+      } else {
+        console.log(`User created with initial balance of ${creditsToAdd}`);
+        userUpdated = true;
       }
-
-      console.log(`User created with initial balance of ${creditsToAdd}`);
     } else {
       // User exists, update their balance
       currentBalance = users[0]?.credit_balance || 0;
@@ -94,7 +90,7 @@ export async function addCreditsToUser(
       );
 
       // Update user's credit balance
-      const { error: updateError } = await supabase
+      const { error: updateError } = await db
         .from("users")
         .update({
           credit_balance: newBalance,
@@ -106,12 +102,23 @@ export async function addCreditsToUser(
           `Error updating user credits: ${updateError.code} - ${updateError.message}`
         );
 
-        // If we can't update due to RLS, still record the transaction
-        if (updateError.code === "42501") {
-          // PostgreSQL permission denied code
-          console.log(
-            "Permission denied for update, recording transaction only"
+        // If we're using the regular client, this might be due to RLS
+        if (db === supabase) {
+          console.warn(
+            "Using regular client with RLS restrictions - this may cause permission issues"
           );
+
+          // If we can't update due to RLS, still record the transaction
+          if (updateError.code === "42501") {
+            console.log(
+              "Permission denied for update, recording transaction only"
+            );
+            userUpdated = false;
+          } else {
+            throw new Error(
+              `Error updating user credits: ${updateError.message}`
+            );
+          }
         } else {
           throw new Error(
             `Error updating user credits: ${updateError.message}`
@@ -119,21 +126,23 @@ export async function addCreditsToUser(
         }
       } else {
         console.log(`Successfully updated balance to ${newBalance}`);
+        userUpdated = true;
       }
     }
 
     console.log(`Recording transaction`);
 
     // Record the transaction
-    const { error: transactionError } = await supabase
-      .from("transactions")
-      .insert({
-        user_id: userId,
-        amount,
-        credits_added: creditsToAdd,
-        payment_intent_id: paymentIntentId,
-        status: "completed",
-      });
+    const { error: transactionError } = await db.from("transactions").insert({
+      user_id: userId,
+      amount,
+      credits_added: creditsToAdd,
+      payment_intent_id: paymentIntentId,
+      status: userUpdated ? "completed" : "pending_credit_update",
+      notes: userUpdated
+        ? null
+        : "Transaction recorded but credits not added due to permission issues",
+    });
 
     if (transactionError) {
       console.error(
@@ -147,7 +156,7 @@ export async function addCreditsToUser(
       console.log(`Transaction recorded successfully`);
     }
 
-    return true;
+    return userUpdated;
   } catch (error) {
     console.error("Unexpected error in addCreditsToUser:", error);
     throw error; // Rethrow to be handled by the caller
@@ -482,7 +491,7 @@ export async function deductCreditsForCall(
 
 // Get user's credit balance
 export async function getUserCreditBalance(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<number> {
   try {

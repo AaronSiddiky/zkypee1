@@ -121,12 +121,20 @@ export async function GET(request: NextRequest) {
     // Add credits to the user's account
     console.log(`Adding ${creditsToAdd} credits to user ${userId}`);
     try {
-      await addCreditsToUser(
+      const creditsAdded = await addCreditsToUser(
         userId,
         Number(creditsToAdd),
         paymentIntentId,
         creditPackage.amount
       );
+
+      if (!creditsAdded) {
+        console.warn(
+          "Payment processed but credits may not have been added to the user's account"
+        );
+        // We'll still return a success response, but with a flag indicating the credits might not have been added
+        return createSuccessResponse(false);
+      }
     } catch (creditError) {
       console.error("Error adding credits to user:", creditError);
 
@@ -161,11 +169,14 @@ export async function GET(request: NextRequest) {
           fallbackError
         );
       }
+
+      // Return a success response with a flag indicating the credits weren't added
+      return createSuccessResponse(false);
     }
 
     // Return a success response instead of redirecting
     console.log("Payment processed successfully, sending success response");
-    return createSuccessResponse();
+    return createSuccessResponse(true);
   } catch (error) {
     console.error("Unexpected error in success route:", error);
 
@@ -175,12 +186,13 @@ export async function GET(request: NextRequest) {
 }
 
 // Helper function to create a consistent success response
-function createSuccessResponse() {
+function createSuccessResponse(creditsAdded = true) {
   // Create a response with the appropriate CORS headers
   const response = NextResponse.json(
     {
       success: true,
-      redirectTo: "/credits/thank-you",
+      creditsAdded: creditsAdded,
+      redirectTo: `/credits/thank-you?creditsAdded=${creditsAdded}`,
     },
     { status: 200 }
   );
