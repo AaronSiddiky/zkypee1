@@ -56,24 +56,28 @@ export default function CountryFlagRotator() {
   const currentFlag = countryFlags[currentIndex];
 
   return (
-    <div className="flex items-center">
-      <div className="text-sm text-gray-600">Call anywhere:</div>
-      <div className="relative h-8 w-10 flex items-center justify-center mx-2">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentIndex}
-            initial={{ opacity: 0, y: 5 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: 0.4 }}
-            className="absolute text-xl"
-          >
-            {currentFlag.flag}
-          </motion.div>
-        </AnimatePresence>
+    <div className="flex flex-col xs:flex-row items-center justify-center xs:justify-start text-center xs:text-left w-full">
+      <div className="text-xs sm:text-sm text-gray-600 mb-1 xs:mb-0">
+        Call anywhere:
       </div>
-      <div className="text-sm text-gray-600 font-medium">
-        {currentFlag.name}
+      <div className="flex items-center justify-center">
+        <div className="relative h-7 w-8 flex items-center justify-center mx-1 xs:mx-2">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentIndex}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -5 }}
+              transition={{ duration: 0.4 }}
+              className="absolute text-lg sm:text-xl"
+            >
+              {currentFlag.flag}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        <div className="text-xs sm:text-sm text-gray-600 font-medium">
+          {currentFlag.name}
+        </div>
       </div>
     </div>
   );

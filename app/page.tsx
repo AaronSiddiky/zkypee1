@@ -20,13 +20,13 @@ export default function HomePage() {
   return (
     <main>
       <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
-        <main className="max-w-7xl mx-auto px-6 sm:px-8 py-12 sm:py-16">
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 md:py-16">
           <div className="flex flex-col lg:flex-row items-center lg:items-start lg:space-x-12">
             {/* Left content area */}
-            <div className="w-full lg:w-1/2 mb-12 lg:mb-0 text-center lg:text-left space-y-8">
+            <div className="w-full lg:w-1/2 mb-8 sm:mb-12 lg:mb-0 text-center lg:text-left space-y-6 sm:space-y-8">
               {/* Headline with more subtle animation */}
-              <div className="space-y-4">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
+              <div className="space-y-2 sm:space-y-4">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">
                   <motion.div
                     initial={{ opacity: 1 }}
                     animate={{
@@ -41,7 +41,7 @@ export default function HomePage() {
                   <AnimatePresence>
                     {showZkypee && (
                       <motion.div
-                        className="text-blue-600 text-4xl sm:text-5xl md:text-6xl"
+                        className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-blue-600"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.7 }}
@@ -51,10 +51,10 @@ export default function HomePage() {
                     )}
                   </AnimatePresence>
                 </h1>
-                <h2 className="text-xl sm:text-2xl font-medium text-blue-600">
+                <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-blue-600">
                   The Professional Skype Alternative
                 </h2>
-                <p className="text-lg text-gray-700 max-w-xl">
+                <p className="text-base sm:text-lg text-gray-700 max-w-xl">
                   Everything you loved about Skype but better - call any
                   landline or mobile phone worldwide with industry-leading
                   rates.
@@ -62,9 +62,9 @@ export default function HomePage() {
               </div>
 
               {/* Features grid with icons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl">
-                <div className="flex items-start space-x-3">
-                  <div className="text-blue-500 mt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-xl">
+                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
+                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"
@@ -78,14 +78,16 @@ export default function HomePage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium">Free Skype Replacement</p>
+                    <p className="font-medium text-gray-900">
+                      Free Skype Replacement
+                    </p>
                     <p className="text-sm text-gray-600">
                       No compromises on quality
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="text-blue-500 mt-1">
+                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
+                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"
@@ -99,14 +101,16 @@ export default function HomePage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium">Transfer Credits</p>
+                    <p className="font-medium text-gray-900">
+                      Transfer Credits
+                    </p>
                     <p className="text-sm text-gray-600">
                       Keep your Skype balance
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="text-blue-500 mt-1">
+                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
+                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"
@@ -120,14 +124,16 @@ export default function HomePage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium">Crystal Clear Calls</p>
+                    <p className="font-medium text-gray-900">
+                      Crystal Clear Calls
+                    </p>
                     <p className="text-sm text-gray-600">
                       HD quality worldwide
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <div className="text-blue-500 mt-1">
+                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
+                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
                     <svg
                       className="w-5 h-5"
                       fill="currentColor"
@@ -141,7 +147,7 @@ export default function HomePage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium">No Subscription</p>
+                    <p className="font-medium text-gray-900">No Subscription</p>
                     <p className="text-sm text-gray-600">
                       Pay only for what you use
                     </p>
@@ -150,9 +156,9 @@ export default function HomePage() {
               </div>
 
               {/* Pricing and country flag section */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start sm:space-x-6 max-w-xl">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start sm:space-x-6 max-w-xl space-y-4 sm:space-y-0">
                 {/* Pricing card */}
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 mb-4 sm:mb-0">
+                <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2 sm:py-3 w-full sm:w-auto text-center sm:text-left">
                   <p className="text-sm text-blue-700 font-medium">From</p>
                   <p className="text-2xl font-bold text-blue-800">
                     $0.03
@@ -166,16 +172,16 @@ export default function HomePage() {
                 </div>
 
                 {/* Country Flag Rotator - simplified */}
-                <div className="flex items-center">
+                <div className="flex items-center justify-center sm:justify-start w-full">
                   <CountryFlagRotator />
                 </div>
               </div>
 
               {/* CTA Buttons - clearer hierarchy */}
-              <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 max-w-xl">
+              <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0 max-w-xl mx-auto sm:mx-0">
                 <Link
                   href="/dial"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center w-full sm:w-auto"
                 >
                   <svg
                     className="w-5 h-5 mr-2"
@@ -194,38 +200,40 @@ export default function HomePage() {
                 </Link>
                 <Link
                   href="/transfer"
-                  className="text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-300 px-6 py-3 rounded-lg text-center font-medium transition-colors"
+                  className="text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-300 px-6 py-3 rounded-lg text-center font-medium transition-colors w-full sm:w-auto"
                 >
                   Transfer Skype Credits
                 </Link>
               </div>
 
               {/* Branding and contact - more professional */}
-              <div className="text-sm text-gray-600 pt-4 border-t border-gray-100 max-w-xl space-y-2">
-                <p>Developed by the Columbia University Communications Lab</p>
-                <div className="flex items-center space-x-2">
+              <div className="text-sm text-gray-600 pt-3 sm:pt-4 border-t border-gray-100 max-w-xl space-y-2 mx-auto sm:mx-0 text-center sm:text-left">
+                <p className="text-xs sm:text-sm">
+                  Developed by the Columbia University Communications Lab
+                </p>
+                <div className="flex flex-col xs:flex-row xs:items-center justify-center sm:justify-start xs:space-x-2 space-y-1 xs:space-y-0">
                   <svg
-                    className="w-4 h-4 text-blue-500"
+                    className="w-4 h-4 text-blue-500 mx-auto xs:mx-0"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
-                  <span>Need help?</span>
+                  <span className="text-xs sm:text-sm">Need help?</span>
                   <a
                     href="mailto:support@zkypee.com"
-                    className="text-blue-600 hover:underline"
+                    className="text-blue-600 hover:underline text-xs sm:text-sm"
                   >
-                    leonard.holter@columbia.edu
+                    support@zkypee.com
                   </a>
                 </div>
               </div>
             </div>
 
             {/* Right side - Phone mockup */}
-            <div className="w-full lg:w-1/2 flex justify-center">
-              <div className="relative scale-90 sm:scale-100">
+            <div className="w-full lg:w-1/2 flex justify-center mt-6 lg:mt-0">
+              <div className="relative scale-75 sm:scale-90 md:scale-100">
                 {/* Phone frame - simplified */}
                 <div className="relative z-10 bg-gradient-to-b from-gray-400 to-gray-300 rounded-[45px] p-[3px] shadow-lg">
                   {/* Inner frame */}
@@ -260,8 +268,8 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Simplified decorative element */}
-                <div className="absolute -bottom-5 -right-5 w-32 h-32 bg-blue-50 rounded-full opacity-40 blur-md"></div>
+                {/* Simplified decorative element - hidden on very small screens */}
+                <div className="absolute -bottom-5 -right-5 w-32 h-32 bg-blue-50 rounded-full opacity-40 blur-md hidden xs:block"></div>
               </div>
             </div>
           </div>
