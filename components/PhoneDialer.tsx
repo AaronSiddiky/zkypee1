@@ -1082,17 +1082,131 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
         <h1 className="text-2xl font-bold mb-4">Make a Call</h1>
         <p className="text-gray-600 mb-6">Enter a phone number to call</p>
 
-        <div className="bg-red-100 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-          <p className="font-medium">Authentication Required</p>
-          <p className="text-sm">You need to sign in to make phone calls.</p>
-        </div>
+        <div className="w-full bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-100 rounded-xl shadow-md p-5 mb-6">
+          <div className="flex items-start">
+            {/* Lock Icon */}
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-blue-500"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
 
-        <button
-          onClick={() => setShowAuth(true)}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded transition-colors"
-        >
-          Sign In to Continue
-        </button>
+            <div className="flex-1">
+              {/* Title and Description */}
+              <h3 className="text-xl font-bold text-blue-800 mb-1">
+                Authentication Required
+              </h3>
+              <p className="text-gray-600 text-sm mb-3">
+                You need to sign in to make phone calls.
+              </p>
+
+              {/* Benefits */}
+              <div className="bg-white rounded-lg p-3 mb-3 w-full">
+                <p className="text-xs text-gray-500 mb-1 font-medium">
+                  Sign in to enjoy these benefits:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                  <div className="flex items-center">
+                    <svg
+                      className="h-3 w-3 text-green-500 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span className="text-xs text-gray-600">
+                      Track call history
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <svg
+                      className="h-3 w-3 text-green-500 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span className="text-xs text-gray-600">
+                      Manage credits
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <svg
+                      className="h-3 w-3 text-green-500 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span className="text-xs text-gray-600">
+                      Call worldwide
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <svg
+                      className="h-3 w-3 text-green-500 mr-1"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span className="text-xs text-gray-600">
+                      Save favorites
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sign In Button with Animation */}
+              <button
+                onClick={() => setShowAuth(true)}
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200 transform hover:scale-[1.02] hover:shadow relative overflow-hidden group"
+              >
+                <span className="relative z-10">Sign In to Continue</span>
+                <span className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></span>
+              </button>
+
+              {/* Privacy Note */}
+              <p className="text-xs text-gray-400 mt-2 text-center">
+                Your information is secure and will only be used for
+                authentication.
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Auth Modal */}
         {showAuth && (

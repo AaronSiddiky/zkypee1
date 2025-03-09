@@ -19,165 +19,250 @@ export default function HomePage() {
 
   return (
     <main>
-      <div className="min-h-screen">
-        <main className="max-w-7xl mx-auto px-4 sm:px-8 py-6 sm:py-12 flex flex-col lg:flex-row items-center">
-          <div className="w-full lg:w-1/2 mb-8 lg:mb-0 text-center lg:text-left">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 sm:mb-6">
-              <motion.div
-                initial={{ opacity: 1 }}
-                animate={{
-                  opacity: showZkypee ? 0.5 : 1,
-                  textDecoration: showZkypee ? "line-through" : "none",
-                }}
-                transition={{ duration: 0.5 }}
-              >
-                Skype is shutting down
-              </motion.div>
-
-              <AnimatePresence>
-                {showZkypee && (
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
+        <main className="max-w-7xl mx-auto px-6 sm:px-8 py-12 sm:py-16">
+          <div className="flex flex-col lg:flex-row items-center lg:items-start lg:space-x-12">
+            {/* Left content area */}
+            <div className="w-full lg:w-1/2 mb-12 lg:mb-0 text-center lg:text-left space-y-8">
+              {/* Headline with more subtle animation */}
+              <div className="space-y-4">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold">
                   <motion.div
-                    className="text-blue-500 text-4xl sm:text-5xl md:text-6xl"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5 }}
+                    initial={{ opacity: 1 }}
+                    animate={{
+                      opacity: showZkypee ? 0.3 : 1,
+                      y: showZkypee ? -10 : 0,
+                    }}
+                    transition={{ duration: 0.7 }}
                   >
-                    Zkypee is here
+                    Skype is shutting down
                   </motion.div>
-                )}
-              </AnimatePresence>
-            </h1>
-            <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-blue-600">
-              The Best Skype Alternative
-            </h2>
-            <p className="text-lg sm:text-xl mb-4">
-              Looking for a Skype replacement? Zkypee offers everything you
-              loved about Skype but better - call any landline or mobile phone
-              with the cheapest rates available
-            </p>
 
-            {/* Features summary */}
-            <div className="mb-6 text-left">
-              <ul className="list-disc list-inside text-gray-700">
-                <li className="mb-1">
-                  Free Skype replacement with no compromises
-                </li>
-                <li className="mb-1">Transfer your existing Skype credits</li>
-                <li className="mb-1">
-                  Crystal clear calls to phones worldwide
-                </li>
-                <li className="mb-1">No subscription required</li>
-              </ul>
-            </div>
+                  <AnimatePresence>
+                    {showZkypee && (
+                      <motion.div
+                        className="text-blue-600 text-4xl sm:text-5xl md:text-6xl"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.7 }}
+                      >
+                        Zkypee is here
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </h1>
+                <h2 className="text-xl sm:text-2xl font-medium text-blue-600">
+                  The Professional Skype Alternative
+                </h2>
+                <p className="text-lg text-gray-700 max-w-xl">
+                  Everything you loved about Skype but better - call any
+                  landline or mobile phone worldwide with industry-leading
+                  rates.
+                </p>
+              </div>
 
-            {/* Cost indicator */}
-            <p className="text-red-600 font-bold text-lg sm:text-xl mb-4 text-center lg:text-left">
-              Only $0.15 per minute!
-            </p>
-
-            {/* Country Flag Rotator */}
-            <div className="mb-4 flex justify-center lg:justify-start">
-              <CountryFlagRotator />
-            </div>
-
-            <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 justify-center lg:justify-start">
-              <Link
-                href="/dial"
-                className="bg-blue-500 text-white px-8 py-3 rounded-full text-center"
-              >
-                Call anyone anywhere!
-              </Link>
-              <Link
-                href="/transfer"
-                className="text-blue-500 px-8 py-3 flex items-center justify-center"
-              >
-                Convert your skype credits →
-              </Link>
-            </div>
-            <p className="text-sm text-gray-700 font-medium mt-4">
-              Made by Fellow betrayed Skype Users at Columbia University
-            </p>
-          </div>
-
-          <div className="w-full lg:w-1/2 flex justify-center">
-            <div className="relative scale-90 sm:scale-100">
-              {/* Phone frame - iPhone 16 style with titanium edges */}
-              <div className="relative z-10 bg-gradient-to-b from-gray-400 to-gray-300 rounded-[55px] p-[3px] shadow-2xl">
-                {/* Titanium frame effect */}
-                <div className="absolute inset-0 rounded-[55px] bg-gradient-to-r from-gray-300 via-gray-200 to-gray-300 opacity-80"></div>
-
-                {/* Inner frame */}
-                <div className="relative bg-black rounded-[52px] overflow-hidden w-[280px] sm:w-[340px] h-[560px] sm:h-[680px] border-[3px] border-gray-800">
-                  {/* Dynamic Island */}
-                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[110px] sm:w-[130px] h-[30px] sm:h-[35px] bg-black rounded-b-3xl z-20 mt-2 flex items-center justify-center">
-                    {/* Front camera */}
-                    <div className="absolute right-6 w-2.5 sm:w-3 h-2.5 sm:h-3 rounded-full bg-gray-800 ring-1 ring-gray-700 flex items-center justify-center">
-                      <div className="w-1 sm:w-1.5 h-1 sm:h-1.5 rounded-full bg-gray-600"></div>
-                    </div>
-
-                    {/* Face ID sensors */}
-                    <div className="absolute left-6 w-1.5 sm:w-2 h-1.5 sm:h-2 rounded-full bg-gray-800"></div>
+              {/* Features grid with icons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl">
+                <div className="flex items-start space-x-3">
+                  <div className="text-blue-500 mt-1">
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </div>
+                  <div>
+                    <p className="font-medium">Free Skype Replacement</p>
+                    <p className="text-sm text-gray-600">
+                      No compromises on quality
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="text-blue-500 mt-1">
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Transfer Credits</p>
+                    <p className="text-sm text-gray-600">
+                      Keep your Skype balance
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="text-blue-500 mt-1">
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">Crystal Clear Calls</p>
+                    <p className="text-sm text-gray-600">
+                      HD quality worldwide
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <div className="text-blue-500 mt-1">
+                    <svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium">No Subscription</p>
+                    <p className="text-sm text-gray-600">
+                      Pay only for what you use
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-                  {/* Status bar */}
-                  <div className="h-12 sm:h-14 w-full bg-black text-white flex items-center justify-between px-6 sm:px-8 pt-4 sm:pt-6">
-                    <div className="text-xs font-medium">9:41</div>
-                    <div className="flex space-x-1.5">
-                      <svg
-                        className="w-3 sm:w-4 h-3 sm:h-4"
-                        viewBox="0 0 24 24"
-                        fill="white"
-                      >
-                        <path d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z" />
-                      </svg>
-                      <svg
-                        className="w-3 sm:w-4 h-3 sm:h-4"
-                        viewBox="0 0 24 24"
-                        fill="white"
-                      >
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-                      </svg>
-                      <div className="w-4 sm:w-6 relative">
-                        <div className="absolute inset-y-0 left-0 w-3 sm:w-5 h-2 sm:h-3 mt-0.5 bg-white rounded-sm"></div>
-                        <div className="absolute inset-y-0 right-0 w-0.5 sm:w-1 h-2 sm:h-3 mt-0.5 bg-white rounded-sm ml-0.5"></div>
+              {/* Pricing and country flag section */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start sm:space-x-6 max-w-xl">
+                {/* Pricing card */}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-3 mb-4 sm:mb-0">
+                  <p className="text-sm text-blue-700 font-medium">From</p>
+                  <p className="text-2xl font-bold text-blue-800">
+                    $0.03
+                    <span className="text-sm font-normal text-blue-600">
+                      /minute
+                    </span>
+                  </p>
+                  <p className="text-xs text-blue-600">
+                    Up to 50% cheaper than Skype
+                  </p>
+                </div>
+
+                {/* Country Flag Rotator - simplified */}
+                <div className="flex items-center">
+                  <CountryFlagRotator />
+                </div>
+              </div>
+
+              {/* CTA Buttons - clearer hierarchy */}
+              <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-3 sm:space-y-0 max-w-xl">
+                <Link
+                  href="/dial"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center"
+                >
+                  <svg
+                    className="w-5 h-5 mr-2"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    />
+                  </svg>
+                  Start Calling Now
+                </Link>
+                <Link
+                  href="/transfer"
+                  className="text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-300 px-6 py-3 rounded-lg text-center font-medium transition-colors"
+                >
+                  Transfer Skype Credits
+                </Link>
+              </div>
+
+              {/* Branding and contact - more professional */}
+              <div className="text-sm text-gray-600 pt-4 border-t border-gray-100 max-w-xl space-y-2">
+                <p>Developed by the Columbia University Communications Lab</p>
+                <div className="flex items-center space-x-2">
+                  <svg
+                    className="w-4 h-4 text-blue-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                  </svg>
+                  <span>Need help?</span>
+                  <a
+                    href="mailto:support@zkypee.com"
+                    className="text-blue-600 hover:underline"
+                  >
+                    leonard.holter@columbia.edu
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Right side - Phone mockup */}
+            <div className="w-full lg:w-1/2 flex justify-center">
+              <div className="relative scale-90 sm:scale-100">
+                {/* Phone frame - simplified */}
+                <div className="relative z-10 bg-gradient-to-b from-gray-400 to-gray-300 rounded-[45px] p-[3px] shadow-lg">
+                  {/* Inner frame */}
+                  <div className="relative bg-black rounded-[42px] overflow-hidden w-[280px] sm:w-[320px] h-[560px] sm:h-[640px] border-[2px] border-gray-800">
+                    {/* Dynamic Island - simplified */}
+                    <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[100px] h-[30px] bg-black rounded-b-3xl z-20 mt-2"></div>
+
+                    {/* Status bar - simplified */}
+                    <div className="h-12 w-full bg-black text-white flex items-center justify-between px-6 pt-4">
+                      <div className="text-xs font-medium">9:41</div>
+                      <div className="flex space-x-1.5">
+                        <svg
+                          className="w-3 h-3"
+                          viewBox="0 0 24 24"
+                          fill="white"
+                        >
+                          <path d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z" />
+                        </svg>
+                        <div className="w-4 relative">
+                          <div className="absolute inset-y-0 left-0 w-3 h-2 mt-0.5 bg-white rounded-sm"></div>
+                        </div>
                       </div>
                     </div>
+
+                    {/* Phone content */}
+                    <div className="bg-white h-full pt-12 pb-4 px-4">
+                      <PhoneContent />
+                    </div>
+
+                    {/* Home indicator */}
+                    <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-white rounded-full"></div>
                   </div>
-
-                  {/* Phone content */}
-                  <div className="bg-white h-full pt-12 sm:pt-14 pb-4 px-4">
-                    <PhoneContent />
-                  </div>
-
-                  {/* Home indicator */}
-                  <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-24 sm:w-32 h-1 bg-white rounded-full"></div>
                 </div>
+
+                {/* Simplified decorative element */}
+                <div className="absolute -bottom-5 -right-5 w-32 h-32 bg-blue-50 rounded-full opacity-40 blur-md"></div>
               </div>
-
-              {/* Camera bump */}
-              <div className="absolute top-20 sm:top-24 -right-2 sm:-right-3 w-12 sm:w-16 h-24 sm:h-32 bg-gradient-to-b from-gray-400 to-gray-300 rounded-2xl z-0"></div>
-              <div className="absolute top-24 sm:top-28 -right-1 sm:-right-2 w-8 sm:w-12 h-16 sm:h-24 bg-gray-800 rounded-xl z-1 flex flex-col items-center justify-center space-y-2 sm:space-y-3 p-1">
-                <div className="w-6 sm:w-9 h-6 sm:h-9 rounded-full bg-gray-700 ring-1 ring-gray-600 flex items-center justify-center">
-                  <div className="w-4 sm:w-6 h-4 sm:h-6 rounded-full bg-gray-800 ring-1 ring-gray-700"></div>
-                </div>
-                <div className="w-6 sm:w-9 h-6 sm:h-9 rounded-full bg-gray-700 ring-1 ring-gray-600 flex items-center justify-center">
-                  <div className="w-4 sm:w-6 h-4 sm:h-6 rounded-full bg-gray-800 ring-1 ring-gray-700"></div>
-                </div>
-                <div className="w-6 sm:w-9 h-6 sm:h-9 rounded-full bg-gray-700 ring-1 ring-gray-600 flex items-center justify-center">
-                  <div className="w-4 sm:w-6 h-4 sm:h-6 rounded-full bg-gray-800 ring-1 ring-gray-700"></div>
-                </div>
-              </div>
-
-              {/* Decorative elements */}
-              <div className="absolute -bottom-10 -right-10 w-48 sm:w-64 h-48 sm:h-64 bg-blue-100 rounded-full opacity-50 blur-xl"></div>
-              <div className="absolute -top-10 -left-10 w-32 sm:w-48 h-32 sm:h-48 bg-blue-100 rounded-full opacity-50 blur-xl"></div>
-
-              {/* Volume buttons */}
-              <div className="absolute top-32 -left-1 w-1 h-6 sm:h-8 bg-gray-400 rounded-l-lg"></div>
-              <div className="absolute top-44 -left-1 w-1 h-6 sm:h-8 bg-gray-400 rounded-l-lg"></div>
-
-              {/* Power button */}
-              <div className="absolute top-32 -right-3 sm:-right-4 w-1 h-10 sm:h-12 bg-gray-400 rounded-r-lg"></div>
             </div>
           </div>
         </main>

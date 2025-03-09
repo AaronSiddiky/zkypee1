@@ -17,21 +17,21 @@ export default function PhoneContent() {
     <div className="h-full flex flex-col">
       {/* Phone number display */}
       <div className="text-center pt-4 sm:pt-6 pb-2 sm:pb-4 px-2 sm:px-4">
-        <div className="text-2xl sm:text-4xl font-medium mb-1 sm:mb-2 truncate">
+        <div className="text-2xl sm:text-3xl font-medium mb-1 sm:mb-2 truncate">
           {phoneNumber || "Enter a number"}
         </div>
-        <div className="text-xs sm:text-sm text-gray-500">
-          Up to 50% cheaper than Skype
+        <div className="text-xs text-blue-600 font-medium">
+          Professional calling service
         </div>
       </div>
 
       {/* Dial pad */}
       <div className="flex-1 px-2 sm:px-4">
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((key) => (
             <button
               key={key}
-              className="w-full aspect-square rounded-full bg-gray-100 flex items-center justify-center text-lg sm:text-2xl font-medium hover:bg-gray-200 transition-colors"
+              className="w-full aspect-square rounded-lg bg-gray-50 flex items-center justify-center text-lg sm:text-xl font-medium hover:bg-gray-100 transition-colors"
               onClick={() => handleKeyPress(key.toString())}
             >
               {key}
@@ -41,13 +41,13 @@ export default function PhoneContent() {
       </div>
 
       {/* Call button */}
-      <div className="pb-4 sm:pb-8 pt-2 sm:pt-4 flex justify-center">
+      <div className="pb-4 sm:pb-6 pt-2 sm:pt-4 flex justify-center">
         <button
-          className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors"
+          className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm"
           disabled={!phoneNumber}
         >
           <svg
-            className="w-6 h-6 sm:w-8 sm:h-8 text-white"
+            className="w-6 h-6 sm:w-7 sm:h-7 text-white"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
