@@ -21,9 +21,9 @@ export default function HomePage() {
     <main>
       <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 md:py-16">
-          <div className="flex flex-col lg:flex-row items-center lg:items-start lg:space-x-12">
+          <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start lg:space-x-12">
             {/* Left content area */}
-            <div className="w-full lg:w-1/2 mb-8 sm:mb-12 lg:mb-0 text-center lg:text-left space-y-6 sm:space-y-8">
+            <div className="w-full lg:w-1/2 mb-8 sm:mb-12 lg:mb-0 text-center sm:text-center lg:text-left space-y-6 sm:space-y-8 mx-auto">
               {/* Headline with more subtle animation */}
               <div className="space-y-2 sm:space-y-4">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">
@@ -54,7 +54,7 @@ export default function HomePage() {
                 <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-blue-600">
                   The Professional Skype Alternative
                 </h2>
-                <p className="text-base sm:text-lg text-gray-700 max-w-xl">
+                <p className="text-base sm:text-lg text-gray-700 max-w-xl mx-auto lg:mx-0">
                   Everything you loved about Skype but better - call any
                   landline or mobile phone worldwide with industry-leading
                   rates.
@@ -62,7 +62,7 @@ export default function HomePage() {
               </div>
 
               {/* Features grid with icons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-xl mx-auto lg:mx-0">
                 <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
                   <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
                     <svg
@@ -232,7 +232,7 @@ export default function HomePage() {
             </div>
 
             {/* Right side - Phone mockup */}
-            <div className="w-full lg:w-1/2 flex justify-center mt-6 lg:mt-0">
+            <div className="w-full lg:w-1/2 hidden md:flex justify-center mt-6 lg:mt-0">
               <div className="relative scale-75 sm:scale-90 md:scale-100">
                 {/* Phone frame - simplified */}
                 <div className="relative z-10 bg-gradient-to-b from-gray-400 to-gray-300 rounded-[45px] p-[3px] shadow-lg">
