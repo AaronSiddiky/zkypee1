@@ -134,6 +134,21 @@ export default function HomePage() {
                     </p>
                   </div>
                 </div>
+
+                {/* Columbia University Backing - Desktop */}
+                <div className="hidden lg:flex items-center justify-start mt-6 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <Image
+                    src="/images/cc.png"
+                    alt="Columbia University Logo"
+                    width={40}
+                    height={40}
+                    className="mr-3"
+                  />
+                  <p className="text-sm text-gray-700">
+                    Backed by{" "}
+                    <span className="font-semibold">Columbia University</span>
+                  </p>
+                </div>
               </div>
 
               {/* Enhanced pricing section */}
@@ -258,6 +273,23 @@ export default function HomePage() {
             </div>
           </div>
         </main>
+      </div>
+
+      {/* Columbia University Backing - Mobile */}
+      <div className="lg:hidden fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 flex items-center justify-center z-40 shadow-md">
+        <Image
+          src="/images/cc.png"
+          alt="Columbia University Logo"
+          width={36}
+          height={36}
+          className="mr-3"
+        />
+        <p className="text-sm font-medium text-gray-700">
+          Backed by{" "}
+          <span className="font-semibold text-blue-700">
+            Columbia University
+          </span>
+        </p>
       </div>
 
       {/* Sticky mobile CTA */}
