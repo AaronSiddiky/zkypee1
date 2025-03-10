@@ -2,9 +2,35 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneContent from "../components/PhoneContent";
 import CountryFlagRotator from "../components/CountryFlagRotator";
+
+// Sticky mobile CTA component
+const MobileStickyButton = () => (
+  <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 md:hidden z-50">
+    <Link
+      href="/dial"
+      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center w-full"
+    >
+      <svg
+        className="w-5 h-5 mr-2"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+        />
+      </svg>
+      Start Saving Now — $0.03/min
+    </Link>
+  </div>
+);
 
 export default function HomePage() {
   const [showZkypee, setShowZkypee] = useState(false);
@@ -19,219 +45,177 @@ export default function HomePage() {
 
   return (
     <main>
-      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
+      <div className="min-h-screen bg-gradient-to-b from-white to-blue-50 pb-16 md:pb-0">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 md:py-16">
           <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start lg:space-x-12">
             {/* Left content area */}
             <div className="w-full lg:w-1/2 mb-8 sm:mb-12 lg:mb-0 text-center sm:text-center lg:text-left space-y-6 sm:space-y-8 mx-auto">
-              {/* Headline with more subtle animation */}
+              {/* Headline with more direct value proposition */}
               <div className="space-y-2 sm:space-y-4">
+                <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium inline-block mb-2">
+                  Skype Alternative
+                </div>
                 <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">
-                  <motion.div
-                    initial={{ opacity: 1 }}
-                    animate={{
-                      opacity: showZkypee ? 0.3 : 1,
-                      y: showZkypee ? -10 : 0,
-                    }}
-                    transition={{ duration: 0.7 }}
-                  >
-                    Skype is shutting down
-                  </motion.div>
-
-                  <AnimatePresence>
-                    {showZkypee && (
-                      <motion.div
-                        className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-blue-600"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.7 }}
-                      >
-                        Zkypee is here
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <span className="text-blue-600">Zkypee</span> - Call Anyone,
+                  Anywhere
                 </h1>
-                <h2 className="text-lg sm:text-xl md:text-2xl font-medium text-blue-600">
-                  The Professional Skype Alternative
+                <h2 className="text-lg sm:text-xl font-medium text-gray-700">
+                  Save up to 50% on international calls
                 </h2>
-                <p className="text-base sm:text-lg text-gray-700 max-w-xl mx-auto lg:mx-0">
-                  Everything you loved about Skype but better - call any
-                  landline or mobile phone worldwide with industry-leading
-                  rates.
+                <p className="text-base sm:text-lg text-gray-600 max-w-xl mx-auto lg:mx-0">
+                  Everything you loved about Skype but better - with
+                  industry-leading rates starting at just $0.03/minute.
                 </p>
-              </div>
 
-              {/* Features grid with icons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 max-w-xl mx-auto lg:mx-0">
-                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
-                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
+                {/* Quick value badges */}
+                <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-2">
+                  <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
                     <svg
-                      className="w-5 h-5"
+                      className="w-3 h-3 mr-1"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                     >
                       <path
                         fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
                         clipRule="evenodd"
                       />
                     </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      Free Skype Replacement
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      No compromises on quality
-                    </p>
-                  </div>
+                    No Subscription
+                  </span>
+                  <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
+                    <svg
+                      className="w-3 h-3 mr-1"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    HD Quality
+                  </span>
+                  <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
+                    <svg
+                      className="w-3 h-3 mr-1"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    Keep Skype Credits
+                  </span>
                 </div>
-                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
-                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
-                    <svg
-                      className="w-5 h-5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
-                        clipRule="evenodd"
+
+                {/* Mobile app image - only visible on mobile */}
+                <div className="w-full max-w-xl mx-auto lg:hidden mt-6 mb-8">
+                  <h3 className="text-center text-lg font-medium text-blue-600 mb-3">
+                    See it in action
+                  </h3>
+                  <div className="bg-gradient-to-r from-blue-50 to-white p-3 rounded-lg shadow-sm">
+                    <div className="rounded-lg overflow-hidden shadow-md relative border border-blue-100">
+                      <Image
+                        src="/images/home.png"
+                        alt="Zkypee mobile app"
+                        width={600}
+                        height={400}
+                        className="w-full h-auto"
+                        priority
                       />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      Transfer Credits
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Keep your Skype balance
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
-                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
-                    <svg
-                      className="w-5 h-5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      Crystal Clear Calls
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      HD quality worldwide
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3 p-3 rounded-lg bg-white/50 border border-blue-50 shadow-sm">
-                  <div className="text-blue-500 bg-blue-50 p-2 rounded-full">
-                    <svg
-                      className="w-5 h-5"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-gray-900">No Subscription</p>
-                    <p className="text-sm text-gray-600">
-                      Pay only for what you use
+                    </div>
+                    <p className="text-center text-sm text-gray-600 mt-3 font-medium">
+                      Simple, intuitive interface for crystal-clear calls
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Pricing and country flag section */}
-              <div className="flex flex-col sm:flex-row items-center sm:items-start sm:space-x-6 max-w-xl space-y-4 sm:space-y-0">
-                {/* Pricing card */}
-                <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2 sm:py-3 w-full sm:w-auto text-center sm:text-left">
-                  <p className="text-sm text-blue-700 font-medium">From</p>
-                  <p className="text-2xl font-bold text-blue-800">
-                    $0.03
-                    <span className="text-sm font-normal text-blue-600">
-                      /minute
+              {/* Enhanced pricing section */}
+              <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-4 w-full max-w-xl mx-auto lg:mx-0 my-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="flex items-center mb-2">
+                    <span className="text-3xl font-bold text-blue-600">
+                      $0.03
                     </span>
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    Up to 50% cheaper than Skype
-                  </p>
-                </div>
+                    <span className="text-gray-600 ml-1">/minute</span>
+                  </div>
 
-                {/* Country Flag Rotator - simplified */}
-                <div className="flex items-center justify-center sm:justify-start w-full">
-                  <CountryFlagRotator />
+                  <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium mb-2">
+                    Save up to 50% vs Skype
+                  </div>
+
+                  <div className="flex items-center justify-center space-x-4 w-full mt-2">
+                    <div className="flex flex-col items-center">
+                      <div className="text-sm font-medium text-gray-500">
+                        Zkypee
+                      </div>
+                      <div className="text-lg font-bold text-blue-600">
+                        $0.03
+                      </div>
+                    </div>
+
+                    <div className="h-8 border-r border-gray-200"></div>
+
+                    <div className="flex flex-col items-center">
+                      <div className="text-sm font-medium text-gray-500">
+                        Skype
+                      </div>
+                      <div className="text-lg font-bold text-gray-600 line-through">
+                        $0.06
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 w-full">
+                    <Link
+                      href="/dial"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center w-full"
+                    >
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                        />
+                      </svg>
+                      Start Saving Now
+                    </Link>
+                  </div>
                 </div>
               </div>
 
-              {/* CTA Buttons - clearer hierarchy */}
-              <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0 max-w-xl mx-auto sm:mx-0">
+              {/* Secondary CTA */}
+              <div className="mb-6">
                 <Link
-                  href="/dial"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center w-full sm:w-auto"
+                  href="/transfer"
+                  className="border border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg text-center font-medium transition-colors flex items-center justify-center w-full"
                 >
                   <svg
                     className="w-5 h-5 mr-2"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    />
-                  </svg>
-                  Start Calling Now
-                </Link>
-                <Link
-                  href="/transfer"
-                  className="text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-300 px-6 py-3 rounded-lg text-center font-medium transition-colors w-full sm:w-auto"
-                >
-                  Transfer Skype Credits
-                </Link>
-              </div>
-
-              {/* Branding and contact - more professional */}
-              <div className="text-sm text-gray-600 pt-3 sm:pt-4 border-t border-gray-100 max-w-xl space-y-2 mx-auto sm:mx-0 text-center sm:text-left">
-                <p className="text-xs sm:text-sm">
-                  Developed by the Columbia University Communications Lab
-                </p>
-                <div className="flex flex-col xs:flex-row xs:items-center justify-center sm:justify-start xs:space-x-2 space-y-1 xs:space-y-0">
-                  <svg
-                    className="w-4 h-4 text-blue-500 mx-auto xs:mx-0"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
-                    <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                    <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                    <path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8z" />
+                    <path d="M12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z" />
                   </svg>
-                  <span className="text-xs sm:text-sm">Need help?</span>
-                  <a
-                    href="mailto:support@zkypee.com"
-                    className="text-blue-600 hover:underline text-xs sm:text-sm"
-                  >
-                    support@zkypee.com
-                  </a>
-                </div>
+                  Transfer Skype Credits & Get 10% Bonus
+                </Link>
               </div>
             </div>
 
-            {/* Right side - Phone mockup */}
+            {/* Right side - Phone mockup (hidden on mobile) */}
             <div className="w-full lg:w-1/2 hidden md:flex justify-center mt-6 lg:mt-0">
               <div className="relative scale-75 sm:scale-90 md:scale-100">
                 {/* Phone frame - simplified */}
@@ -275,6 +259,9 @@ export default function HomePage() {
           </div>
         </main>
       </div>
+
+      {/* Sticky mobile CTA */}
+      <MobileStickyButton />
     </main>
   );
 }

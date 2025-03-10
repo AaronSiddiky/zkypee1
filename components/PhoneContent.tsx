@@ -41,9 +41,9 @@ export default function PhoneContent() {
       </div>
 
       {/* Call button */}
-      <div className="pb-2 sm:pb-4 md:pb-6 pt-1 sm:pt-2 md:pt-4 flex justify-center">
+      <div className="pb-2 sm:pb-4 md:pb-6 pt-1 sm:pt-2 md:pt-4 flex justify-center mt-[-20px]">
         <button
-          className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm"
+          className="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-green-500 flex items-center justify-center hover:bg-green-600 transition-colors shadow-sm mb-10"
           disabled={!phoneNumber}
         >
           <svg
