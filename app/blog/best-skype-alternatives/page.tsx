@@ -9,6 +9,9 @@ export const metadata: Metadata = {
     "Discover 10 proven VoIP communication tips to enhance remote team collaboration, improve call quality, and boost productivity with Zkypee's expert guide.",
   keywords:
     "VoIP communication tips, remote team communication, improve call quality, VoIP best practices, Zkypee tips",
+  alternates: {
+    canonical: "https://zkypee.com/blog/best-skype-alternatives",
+  },
   openGraph: {
     title:
       "10 Essential VoIP Communication Tips for Remote Teams | Zkypee Blog",

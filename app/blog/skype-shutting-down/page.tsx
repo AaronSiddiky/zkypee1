@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     "After Skype shuts down in May 2025, discover the best Skype alternative with the cheapest international calling rates. Zkypee offers superior quality and up to 40% lower international rates than Skype.",
   keywords:
     "best Skype alternative, cheapest international calling, Skype shutting down 2025, Skype ending, international calling rates, Microsoft ending Skype, Free Skype replacement",
+  alternates: {
+    canonical: "https://zkypee.com/blog/skype-shutting-down",
+  },
   openGraph: {
     title:
       "Best Skype Alternative with Cheapest International Calling | Skype Shutting Down 2025",
