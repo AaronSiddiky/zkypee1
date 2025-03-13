@@ -1432,6 +1432,16 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       const refreshTrialUsageOnMount = async () => {
         try {
           // Get stored identifiers
+          const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+          const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+          if (!fingerprint || !ipAddress) {
+            console.warn(
+              "[TRIAL UI] Missing fingerprint or ipAddress for trial usage check"
+            );
+            return;
+          }
+
           // Directly fetch from API endpoint for most up-to-date values
           console.log("[TRIAL UI] Initial refresh of trial usage from API");
           const response = await fetch(
