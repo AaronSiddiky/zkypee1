@@ -21,7 +21,7 @@ import {
   BarChart,
   Bar,
 } from "recharts";
-import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { supabase, supabaseAdmin, requireAdmin } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { PieChart, Pie, Cell } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -66,42 +66,42 @@ export default function TrialAnalyticsDashboard() {
         }
 
         // Get total trials
-        const { data: totalData, error: totalError } = await supabaseAdmin
+        const { data: totalData, error: totalError } = await requireAdmin()
           .from("trial_calls")
           .select("count")
           .eq("count", 1)
-          .filter("created_at", "is", "not", "null");
+          .not("created_at", "is", null);
 
         if (totalError) throw totalError;
 
         // Get completed calls (count > 0)
         const { data: completedData, error: completedError } =
-          await supabaseAdmin
+          await requireAdmin()
             .from("trial_calls")
             .select("count")
             .gt("count", 0)
-            .filter("created_at", "is", "not", "null");
+            .not("created_at", "is", null);
 
         if (completedError) throw completedError;
 
         // Get conversions
         const { data: conversionData, error: conversionError } =
-          await supabaseAdmin
+          await requireAdmin()
             .from("trial_calls")
             .select("count")
-            .eq("converted_to_signup", true)
-            .filter("created_at", "is", "not", "null");
+            .eq("converted", true)
+            .not("created_at", "is", null);
 
         if (conversionError) throw conversionError;
 
         // Get average duration
         const { data: durationData, error: durationError } =
-          await supabaseAdmin.rpc("get_average_trial_duration");
+          await requireAdmin().rpc("get_average_trial_duration");
 
         if (durationError) throw durationError;
 
         // Get trials by day
-        const { data: dailyData, error: dailyError } = await supabaseAdmin.rpc(
+        const { data: dailyData, error: dailyError } = await requireAdmin().rpc(
           "get_daily_trial_counts",
           { days_back: dateRange === "7d" ? 7 : 30 }
         );
@@ -110,7 +110,7 @@ export default function TrialAnalyticsDashboard() {
 
         // Get conversions by variant
         const { data: variantData, error: variantError } =
-          await supabaseAdmin.rpc("get_conversion_by_variant");
+          await requireAdmin().rpc("get_conversion_by_variant");
 
         if (variantError) throw variantError;
 
