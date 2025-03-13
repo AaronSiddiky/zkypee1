@@ -684,10 +684,15 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       );
 
       // Import the supabase client and admin client
-      const { supabase, supabaseAdmin } = await import("@/lib/supabase");
+      const { supabase, supabaseAdmin, requireAdmin } = await import(
+        "@/lib/supabase"
+      );
+
+      // Use requireAdmin to ensure we have a valid admin client
+      const admin = requireAdmin();
 
       // Check for record by IP
-      const { data: ipData, error: ipError } = await supabaseAdmin
+      const { data: ipData, error: ipError } = await admin
         .from("trial_calls")
         .select("*")
         .filter("ip_address", "eq", ipAddress)
@@ -715,12 +720,11 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       );
 
       // Check for record by fingerprint
-      const { data: fingerprintData, error: fingerprintError } =
-        await supabaseAdmin
-          .from("trial_calls")
-          .select("*")
-          .eq("device_fingerprint", fingerprint)
-          .maybeSingle();
+      const { data: fingerprintData, error: fingerprintError } = await admin
+        .from("trial_calls")
+        .select("*")
+        .eq("device_fingerprint", fingerprint)
+        .maybeSingle();
 
       console.log(
         "[TRIAL FLOW] verifyTrialRecordInDatabase - Fingerprint query result:",
@@ -745,7 +749,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       );
 
       // Get all records for debugging
-      const { data: allRecords, error: allRecordsError } = await supabaseAdmin
+      const { data: allRecords, error: allRecordsError } = await admin
         .from("trial_calls")
         .select("*")
         .order("last_call_at", { ascending: false })
