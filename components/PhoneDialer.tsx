@@ -550,7 +550,10 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     initializeTrialMode,
     showTrialConversionModal,
     setShowTrialConversionModal,
-    setTrialCallsRemaining, // Add this line to destructure setTrialCallsRemaining
+    // Extract setTrialCallsRemaining from context
+    setTrialCallsRemaining,
+    // Extract sendDTMF function from context
+    sendDTMF,
   } = useTwilio();
 
   // Add state for call rate and SID
@@ -790,6 +793,19 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       return;
     }
 
+    // Check if there's an active call
+    if (twilioConnected) {
+      // If we're in a call, send the DTMF tone to the active call
+      console.log(`Sending DTMF digit ${num} during active call`);
+      // Play DTMF tone locally
+      playDTMF(num === "*" ? "*" : num === "#" ? "#" : num);
+      // Send DTMF digit through Twilio - don't check connection
+      // The sendDTMF function already checks for activeCall
+      sendDTMF(num);
+      return;
+    }
+
+    // If not in a call, add the digit to the phone number
     // Play DTMF tone
     playDTMF(num === "*" ? "*" : num === "#" ? "#" : num);
 
@@ -1765,20 +1781,28 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
         )}
 
         {/* Dialer buttons */}
-        <div
-          className={`grid grid-cols-3 gap-2 mb-4 ${
-            localCallState.isConnected ? "opacity-50" : ""
-          }`}
-        >
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
-            <DialButton
-              key={num}
-              value={num.toString()}
-              onClick={() => handleNumberClick(num.toString())}
-              disabled={localCallState.isConnected}
-              className={num === 0 ? "dial-button-zero" : ""}
-            />
-          ))}
+        <div className="mb-4">
+          {/* Show message when in a call that dial pad can be used */}
+          {localCallState.isConnected && (
+            <div className="text-sm text-center py-2 mb-2 bg-blue-50 text-blue-700 rounded-lg">
+              <span className="inline-block mr-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+              Dial pad active for menu navigation
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
+              <DialButton
+                key={num}
+                value={num.toString()}
+                onClick={() => handleNumberClick(num.toString())}
+                disabled={
+                  false
+                } /* Remove the disabled state to allow usage during calls */
+                className={num === 0 ? "dial-button-zero" : ""}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Call/Hangup button */}

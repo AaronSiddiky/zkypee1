@@ -203,6 +203,8 @@ interface TwilioContextType {
   initializeTrialMode: () => Promise<boolean>;
   showTrialConversionModal: boolean;
   setShowTrialConversionModal: (show: boolean) => void;
+  // Add a new function to send DTMF tones during a call
+  sendDTMF: (digit: string) => void;
 }
 
 const TwilioContext = createContext<TwilioContextType | undefined>(undefined);
@@ -1347,14 +1349,19 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           params: { To: phoneNumber },
         });
 
-        // Store call reference
+        // Store call reference in both state variables
         setActiveCall(call);
+        setConnection(call);
 
         // Set up call event handlers
         call.on("accept", () => {
           console.log("Call accepted");
           setIsConnected(true);
           setStatus(CallStatus.CONNECTED);
+
+          // Ensure both states are set when call is accepted
+          setActiveCall(call);
+          setConnection(call);
 
           if (isTrialMode) {
             // Start trial timer
@@ -2129,6 +2136,57 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
+  // Add a function to send DTMF tones during a call
+  const sendDTMF = (digit: string) => {
+    try {
+      // Validate the digit
+      if (
+        !digit ||
+        !["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "#"].includes(
+          digit
+        )
+      ) {
+        console.error("Invalid DTMF digit:", digit);
+        return;
+      }
+
+      // Add more detailed logging
+      console.log("DTMF Debug - Current call state:", {
+        hasActiveCall: !!activeCall,
+        callStatus: status,
+        isConnected: isConnected,
+        digit: digit,
+      });
+
+      // Check if we have an active call
+      if (!activeCall) {
+        console.warn("Cannot send DTMF: No active call");
+        return;
+      }
+
+      console.log(`Sending DTMF digit: ${digit}`);
+
+      // Verify if sendDigits is a function
+      if (typeof activeCall.sendDigits !== "function") {
+        console.error(
+          "Error: activeCall.sendDigits is not a function",
+          activeCall
+        );
+        return;
+      }
+
+      // Send the digit via the Twilio SDK
+      activeCall.sendDigits(digit);
+
+      // Also play the tone locally for audio feedback
+      import("@/lib/audio").then((audio) => {
+        audio.playDTMF(digit);
+      });
+    } catch (error) {
+      console.error("Error sending DTMF tone:", error);
+    }
+  };
+
   const value: TwilioContextType = {
     status,
     isReady,
@@ -2168,6 +2226,8 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     initializeTrialMode,
     showTrialConversionModal,
     setShowTrialConversionModal,
+    // Add the new sendDTMF function to the context
+    sendDTMF,
   };
 
   return (
