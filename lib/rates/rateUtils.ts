@@ -127,19 +127,42 @@ export function getRateByNumber(
     };
   }
 
+  // Special handling for North American numbers (US/Canada)
+  // If the number starts with 1, it's a North American number
+  if (input.startsWith("1")) {
+    // Find the United States/Canada rate entry
+    const usCanadaRate = rates.find(
+      (rate) =>
+        rate.country === "United States/Canada" && rate.countryCode === "(+1)"
+    );
+
+    if (usCanadaRate) {
+      console.log(
+        `[getRateByNumber] Found North American number: ${input}, using US/Canada rate: ${usCanadaRate.minRate}`
+      );
+      return {
+        found: true,
+        rate: usCanadaRate.minRate,
+        country: usCanadaRate.country,
+        countryCode: usCanadaRate.countryCode,
+        formattedNumber: `+1${input.substring(1)}`,
+      };
+    }
+  }
+
   // Try to find a match
   for (const rate of rates) {
     if (
       input.startsWith(rate.formattedCode) ||
       input.includes(rate.formattedCode)
     ) {
-      // Use the higher rate to be safe
+      // Use the lower rate for better user value
       console.log(
-        `[getRateByNumber] Found match: ${rate.country} (${rate.countryCode}), rate: ${rate.maxRate}`
+        `[getRateByNumber] Found match: ${rate.country} (${rate.countryCode}), rate: ${rate.minRate}`
       );
       return {
         found: true,
-        rate: rate.maxRate,
+        rate: rate.minRate,
         country: rate.country,
         countryCode: rate.countryCode,
         formattedNumber: `+${rate.formattedCode}${input.substring(
@@ -158,11 +181,11 @@ export function getRateByNumber(
       for (const rate of rates) {
         if (rate.formattedCode.startsWith(prefix)) {
           console.log(
-            `[getRateByNumber] Found prefix match: ${prefix} → ${rate.country}, rate: ${rate.maxRate}`
+            `[getRateByNumber] Found prefix match: ${prefix} → ${rate.country}, rate: ${rate.minRate}`
           );
           return {
             found: true,
-            rate: rate.maxRate,
+            rate: rate.minRate,
             country: rate.country,
             countryCode: rate.countryCode,
             formattedNumber: `+${rate.formattedCode}${input.substring(

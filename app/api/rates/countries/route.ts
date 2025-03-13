@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         count: rates.length,
         countries: rates.map((rate) => ({
           ...rate,
-          formattedRate: rateService.formatRateDisplay(rate.maxRate),
+          formattedRate: rateService.formatRateDisplay(rate.minRate),
         })),
       };
     });
