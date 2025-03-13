@@ -501,7 +501,10 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           if (remaining === 0 && isConnected) {
             console.log("Trial time expired, ending call");
             hangUp();
-            setShowTrialConversionModal(true);
+            // Only show conversion modal if user is not logged in
+            if (!user) {
+              setShowTrialConversionModal(true);
+            }
           }
         }
       }, 1000);
@@ -511,11 +514,14 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         if (isConnected) {
           console.log("Trial time backup timer triggered, ending call");
           hangUp();
-          setShowTrialConversionModal(true);
+          // Only show conversion modal if user is not logged in
+          if (!user) {
+            setShowTrialConversionModal(true);
+          }
         }
       }, 61000); // 61 seconds as a safety margin
     },
-    [callStartTime, isConnected]
+    [callStartTime, isConnected, user]
   );
 
   // Function to stop tracking trial call duration
@@ -625,8 +631,8 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           }
         );
 
-        // If no calls remaining, show the conversion modal
-        if (usage.callsRemaining <= 0) {
+        // If no calls remaining, show the conversion modal ONLY if not logged in
+        if (usage.callsRemaining <= 0 && !user) {
           console.log(
             "[TRIAL FLOW] stopTrialCallTracking - No calls remaining, showing conversion modal"
           );
@@ -671,6 +677,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     callTo,
     callQuality,
     trialCallsRemaining,
+    user,
   ]);
 
   // Helper function to verify trial record in database
@@ -1457,8 +1464,10 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
             // Don't decrement trial calls here since we already did it on accept
             // setTrialCallsRemaining((prev) => prev - 1);
 
-            // Show conversion modal after trial call ends
-            setShowTrialConversionModal(true);
+            // Show conversion modal after trial call ends only if user is not logged in
+            if (!user) {
+              setShowTrialConversionModal(true);
+            }
           } else {
             stopCallTracking();
           }
@@ -1841,6 +1850,14 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   const initializeTrialMode = useCallback(async (): Promise<boolean> => {
     console.log("[TRIAL FLOW] initializeTrialMode - Starting");
 
+    // If user is logged in, skip trial initialization - they already have a full account
+    if (user) {
+      console.log(
+        "[TRIAL FLOW] initializeTrialMode - User is logged in, skipping trial initialization"
+      );
+      return true;
+    }
+
     try {
       // Check if we already have a trial token
       const existingToken = localStorage.getItem("zkypee_trial_token");
@@ -1920,8 +1937,8 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
             usage.callsRemaining
           );
 
-          // If no calls remaining, show the conversion modal
-          if (usage.callsRemaining <= 0) {
+          // If no calls remaining, show the conversion modal ONLY if user is not logged in
+          if (usage.callsRemaining <= 0 && !user) {
             console.log(
               "[TRIAL FLOW] initializeTrialMode - No calls remaining, showing conversion modal"
             );
@@ -2008,12 +2025,21 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     setIsReady,
     setIsConnecting,
     setTrialTimeRemaining,
+    user,
   ]);
 
   // Add useEffect to fetch current trial usage when component mounts
   useEffect(() => {
     const checkTrialStatus = async () => {
       if (typeof window === "undefined") return;
+
+      // Skip all trial operations if user is logged in
+      if (user) {
+        console.log(
+          "[TRIAL FLOW] checkTrialStatus - User is logged in, skipping trial checks"
+        );
+        return;
+      }
 
       // Check if we have trial fingerprint and IP address in localStorage
       const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
@@ -2050,8 +2076,8 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           usage.callsRemaining
         );
 
-        // If no calls remaining, show the conversion modal
-        if (usage.callsRemaining <= 0) {
+        // If no calls remaining, show the conversion modal ONLY if user is not logged in
+        if (usage.callsRemaining <= 0 && !user) {
           console.log(
             "[TRIAL FLOW] checkTrialStatus - No calls remaining, showing conversion modal"
           );
@@ -2069,7 +2095,39 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     trialCallsRemaining,
     setTrialCallsRemaining,
     setShowTrialConversionModal,
+    user,
   ]);
+
+  // Helper function to check if we should show the trial conversion modal
+  const shouldShowTrialConversionModal = useCallback(() => {
+    // If user is logged in, we should never show the trial conversion modal
+    if (user) {
+      return false;
+    }
+
+    // Otherwise, check if trial calls are exhausted
+    return trialCallsRemaining <= 0;
+  }, [user, trialCallsRemaining]);
+
+  // Add useEffect to reset trial mode for logged-in users
+  useEffect(() => {
+    // If user is logged in, disable trial mode completely
+    if (user) {
+      console.log("[TRIAL FLOW] User is logged in, disabling trial mode");
+
+      // Reset trial mode
+      setIsTrialMode(false);
+      setTrialCallsRemaining(0);
+      setShowTrialConversionModal(false);
+
+      // Clear trial data from localStorage
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("zkypee_trial_fingerprint");
+        localStorage.removeItem("zkypee_trial_ip_address");
+        localStorage.removeItem("zkypee_trial_token");
+      }
+    }
+  }, [user]);
 
   const value: TwilioContextType = {
     status,

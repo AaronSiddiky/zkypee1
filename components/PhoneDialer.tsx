@@ -878,8 +878,8 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
             usage.callsRemaining
           );
 
-          // If no calls remaining, show the conversion modal and prevent the call
-          if (usage.callsRemaining <= 0) {
+          // If no calls remaining, show the conversion modal and prevent the call ONLY if user is not logged in
+          if (usage.callsRemaining <= 0 && !user) {
             console.log(
               "[TRIAL UI] No calls remaining, showing conversion modal"
             );
@@ -1280,7 +1280,8 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
 
   // Update TrialConversionModal component
   const TrialConversionModal = () => {
-    if (!showTrialConversionModal) return null;
+    // Don't show the modal if the user is logged in or if it's not supposed to be shown
+    if (!showTrialConversionModal || user) return null;
 
     // Track modal shown
     useEffect(() => {
@@ -1422,18 +1423,15 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
 
   // Add useEffect to refresh trial usage when component mounts
   useEffect(() => {
+    // Skip all trial operations if user is logged in
+    if (user) {
+      return;
+    }
+
     if (isTrialMode) {
       const refreshTrialUsageOnMount = async () => {
         try {
           // Get stored identifiers
-          const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
-          const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
-
-          if (!fingerprint || !ipAddress) {
-            console.error("[TRIAL UI] Missing fingerprint or IP address");
-            return;
-          }
-
           // Directly fetch from API endpoint for most up-to-date values
           console.log("[TRIAL UI] Initial refresh of trial usage from API");
           const response = await fetch(
@@ -1456,8 +1454,8 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
             usage.callsRemaining
           );
 
-          // If no calls remaining, show the conversion modal
-          if (usage.callsRemaining <= 0) {
+          // If no calls remaining, show the conversion modal ONLY if user is not logged in
+          if (usage.callsRemaining <= 0 && !user) {
             console.log(
               "[TRIAL UI] No calls remaining, showing conversion modal"
             );
@@ -1476,61 +1474,61 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       // Clean up interval on unmount
       return () => clearInterval(refreshInterval);
     }
-  }, [isTrialMode, setTrialCallsRemaining, setShowTrialConversionModal]);
+  }, [isTrialMode, setTrialCallsRemaining, setShowTrialConversionModal, user]);
 
-  // Render authentication UI with trial option
+  // Auto-initialize trial mode for non-authenticated users
+  useEffect(() => {
+    const autoInitializeTrialMode = async () => {
+      // Only auto-initialize if user is not logged in and trial mode is not active
+      if (!loading && !user && !isTrialMode) {
+        console.log("Auto-initializing trial mode for non-authenticated user");
+        try {
+          // Track the auto-initialization
+          await trackEvent("trial_auto_initialized", {
+            location: "phone_dialer",
+          });
+
+          // Initialize trial mode
+          const success = await initializeTrialMode();
+
+          if (success) {
+            // Track successful initialization
+            await trackEvent("trial_initialized", {
+              success: true,
+              method: "auto",
+            });
+          } else {
+            // Track failed initialization
+            await trackEvent("trial_initialized", {
+              success: false,
+              error: error || "Unknown error",
+              method: "auto",
+            });
+          }
+        } catch (err) {
+          console.error("Error auto-starting trial:", err);
+        }
+      }
+    };
+
+    autoInitializeTrialMode();
+  }, [loading, user, isTrialMode, initializeTrialMode, error]);
+
+  // Modify the condition to never show the sign in or try now screen
+  // Instead of:
+  // if (!loading && !user && !isTrialMode) {
+  //   return (
+  //     ... sign in or try now UI ...
+  //   );
+  // }
+
+  // Replace with just showing loading state while trial initializes:
   if (!loading && !user && !isTrialMode) {
     return (
-      <div className="w-full">
-        <h1 className="text-2xl font-bold mb-4">Make a Call</h1>
-        <p className="text-gray-600 mb-6">Enter a phone number to call</p>
-
-        <div className="w-full bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-100 rounded-xl shadow-md p-5 mb-6">
-          <p className="text-center mb-4">
-            Sign in to your account or try our service without signing up
-          </p>
-          <div className="flex space-x-4 mt-4">
-            <button
-              onClick={() => setShowAuth(true)}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={handleTryNowClick}
-              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200"
-            >
-              Try Now
-            </button>
-          </div>
-        </div>
-
-        {showAuth && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
-              <button
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-                onClick={() => setShowAuth(false)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-              <Auth onSuccess={() => setShowAuth(false)} />
-            </div>
-          </div>
-        )}
+      <div className="w-full flex flex-col items-center justify-center py-10">
+        <h1 className="text-2xl font-bold mb-4">Initializing Dialer...</h1>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+        <p className="text-gray-600">Setting up your trial experience</p>
       </div>
     );
   }

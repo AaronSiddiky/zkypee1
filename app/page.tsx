@@ -6,6 +6,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import PhoneContent from "../components/PhoneContent";
 import CountryFlagRotator from "../components/CountryFlagRotator";
+import FreeCallPopup from "../components/FreeCallPopup";
 
 // Sticky mobile CTA component
 const MobileStickyButton = () => (
@@ -45,6 +46,8 @@ export default function HomePage() {
 
   return (
     <main>
+      <FreeCallPopup delay={5000} />
+
       <div className="min-h-screen bg-gradient-to-b from-white to-blue-50 pb-16 md:pb-0">
         <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 md:py-16">
           <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start lg:space-x-12">
