@@ -9,6 +9,8 @@ import React, {
 } from "react";
 import { supabase } from "../lib/supabase";
 import { Session, User } from "@supabase/supabase-js";
+import { trackSignup, trackTrialConversion } from "@/lib/analytics";
+import { linkTrialToUser } from "@/lib/trial-limitations";
 
 type AuthContextType = {
   session: Session | null;
@@ -143,18 +145,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return result;
   };
 
-  // Add sign up function
-  const signUp = async (email: string, password: string) => {
-    return supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${getBaseUrl()}/auth/callback`,
-        data: {
-          email_confirmed: true,
+  // Modify signUp function to track signup and handle trial conversion
+  const signUp = async (
+    email: string,
+    password: string,
+    name?: string
+  ): Promise<any> => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: name || "",
+          },
         },
-      },
-    });
+      });
+
+      if (error) throw error;
+
+      // Check if this was a trial conversion
+      const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+      const isTrialConversion = !!fingerprint;
+
+      if (data.user) {
+        // Track signup event
+        await trackSignup(
+          data.user.id,
+          isTrialConversion ? "trial_conversion" : "email"
+        );
+
+        // If this was a trial conversion, link the trial usage to the new user
+        if (isTrialConversion) {
+          try {
+            await linkTrialToUser(fingerprint, data.user.id);
+
+            // Track trial conversion
+            await trackTrialConversion(fingerprint, data.user.id);
+
+            // Clear trial fingerprint after successful conversion
+            localStorage.removeItem("zkypee_trial_fingerprint");
+          } catch (linkError) {
+            console.error("Error linking trial to user:", linkError);
+          }
+        }
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error signing up:", error);
+      throw error;
+    }
   };
 
   const signOut = async () => {

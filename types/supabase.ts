@@ -99,6 +99,41 @@ export interface Database {
           is_active?: boolean;
         };
       };
+      trial_calls: {
+        Row: {
+          device_fingerprint: string;
+          created_at: string;
+          last_call_at: string | null;
+          count: number;
+          total_duration: number;
+          last_call_sid: string | null;
+          last_phone_number: string | null;
+          user_id: string | null;
+          converted_to_signup: boolean;
+        };
+        Insert: {
+          device_fingerprint: string;
+          created_at?: string;
+          last_call_at?: string | null;
+          count?: number;
+          total_duration?: number;
+          last_call_sid?: string | null;
+          last_phone_number?: string | null;
+          user_id?: string | null;
+          converted_to_signup?: boolean;
+        };
+        Update: {
+          device_fingerprint?: string;
+          created_at?: string;
+          last_call_at?: string | null;
+          count?: number;
+          total_duration?: number;
+          last_call_sid?: string | null;
+          last_phone_number?: string | null;
+          user_id?: string | null;
+          converted_to_signup?: boolean;
+        };
+      };
       user_profiles: {
         Row: {
           id: string;

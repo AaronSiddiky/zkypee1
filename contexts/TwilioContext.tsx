@@ -17,6 +17,14 @@ import {
   registerTokenFilterServiceWorker,
   unregisterTokenFilter,
 } from "@/lib/serviceWorker";
+import {
+  trackTrialStart,
+  trackTrialComplete,
+  trackTrialError,
+  trackCallMetrics,
+  getTrialVariant,
+} from "@/lib/analytics";
+import { getClientFingerprint } from "@/lib/trial-limitations";
 
 // Constants for token rotation
 const TOKEN_REFRESH_INTERVAL = 15 * 60 * 1000; // 15 minutes in milliseconds
@@ -187,6 +195,14 @@ interface TwilioContextType {
   callTo: string | null;
   callStartTime: Date | null;
   resetError: () => void;
+  // Trial mode properties
+  isTrialMode: boolean;
+  trialCallsRemaining: number;
+  setTrialCallsRemaining: React.Dispatch<React.SetStateAction<number>>;
+  trialTimeRemaining: number; // in seconds
+  initializeTrialMode: () => Promise<boolean>;
+  showTrialConversionModal: boolean;
+  setShowTrialConversionModal: (show: boolean) => void;
 }
 
 const TwilioContext = createContext<TwilioContextType | undefined>(undefined);
@@ -233,6 +249,14 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   const [currentRate, setCurrentRate] = useState(0);
   const [estimatedCost, setEstimatedCost] = useState(0);
   const [callTo, setCallTo] = useState<string | null>(null);
+
+  // Trial mode state
+  const [isTrialMode, setIsTrialMode] = useState(false);
+  const [trialCallsRemaining, setTrialCallsRemaining] = useState(0);
+  const [trialTimeRemaining, setTrialTimeRemaining] = useState(60); // 60 seconds
+  const [showTrialConversionModal, setShowTrialConversionModal] =
+    useState(false);
+  const trialTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Duration tracking interval
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -332,64 +356,304 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     [callStartTime]
   );
 
-  // Function to stop tracking and deduct credits
+  // Function to stop tracking call duration and cost
   const stopCallTracking = useCallback(async () => {
+    // Clear the duration tracking interval
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
     }
 
-    // Only deduct credits if there was an actual call
-    if (
-      callStartTime &&
-      user &&
-      callDuration > 0 &&
-      activeCall?.parameters?.CallSid
-    ) {
+    // Record the call in the database if it was a valid call
+    if (callStartTime && callDuration > 0 && activeCall?.parameters?.CallSid) {
       try {
-        console.log("Deducting credits for call:", {
+        console.log("Recording call usage:", {
           duration: callDuration,
-          rate: currentRate,
-          estimatedCost,
+          cost: estimatedCost,
           callSid: activeCall.parameters.CallSid,
         });
 
-        // Convert seconds to minutes for billing (round up to nearest minute)
-        const durationMinutes = Math.ceil(callDuration / 60);
+        // Get the current session
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        // Deduct credits using the API
-        const response = await fetch("/api/credits/deduct", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            durationMinutes,
-            callSid: activeCall.parameters.CallSid,
-            phoneNumber: callTo,
-            rate: currentRate,
-            creditsToDeduct: estimatedCost,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Failed to deduct credits:", errorData);
-          throw new Error(errorData.error || "Failed to deduct credits");
+        if (!session) {
+          console.error("No session found for call recording");
+          return;
         }
 
-        const result = await response.json();
-        console.log("Credits deducted successfully:", result);
+        // Record the call in the database
+        const { error } = await supabase.from("call_logs").insert({
+          user_id: session.user.id,
+          call_sid: activeCall.parameters.CallSid,
+          duration: callDuration,
+          cost: estimatedCost,
+          phone_number: callTo || "",
+          direction: "outbound",
+          status: "completed",
+        });
+
+        if (error) {
+          console.error("Error recording call:", error);
+        }
+
+        // Deduct credits from the user's account
+        if (estimatedCost > 0) {
+          const { error: creditError } = await supabase.rpc("deduct_credits", {
+            user_id: session.user.id,
+            amount: estimatedCost,
+          });
+
+          if (creditError) {
+            console.error("Error deducting credits:", creditError);
+          }
+        }
       } catch (error) {
-        console.error("Error deducting credits:", error);
-        setError(
-          "Failed to deduct credits from your account. Please contact support."
+        console.error("Error in stopCallTracking:", error);
+      }
+    }
+
+    // Reset call tracking state
+    setCallStartTime(null);
+    setCallDuration(0);
+    setEstimatedCost(0);
+    setCurrentRate(0);
+  }, [callStartTime, callDuration, estimatedCost, activeCall, callTo]);
+
+  // Function to hang up the call
+  const hangUp = () => {
+    try {
+      console.log(
+        "Hanging up call, activeCall:",
+        !!activeCall,
+        "device:",
+        !!device
+      );
+
+      if (activeCall) {
+        console.log("Hanging up active call");
+        activeCall.disconnect();
+      } else if (device) {
+        console.log("No active call, disconnecting all calls");
+        device.disconnectAll();
+      }
+
+      // Clean up the audio stream
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+      }
+
+      // Ensure state is updated even if disconnect events don't fire
+      setActiveCall(null);
+      setConnection(null);
+      setIsConnected(false);
+      setStatus(CallStatus.READY);
+
+      // Update debug info
+      setDebugInfo({
+        lastAction: "hang_up",
+        timestamp: Date.now(),
+        status: status,
+        error: null,
+      });
+    } catch (error: any) {
+      console.error("Error hanging up call:", error);
+      setError(`Error hanging up: ${error.message}`);
+    }
+  };
+
+  // Function to start tracking trial call duration
+  const startTrialCallTracking = useCallback(
+    (rate: number) => {
+      setCallStartTime(new Date());
+      setCurrentRate(rate);
+      setTrialTimeRemaining(60); // Reset to 60 seconds
+
+      // Clear any existing interval
+      if (durationIntervalRef.current) {
+        clearInterval(durationIntervalRef.current);
+      }
+
+      // Clear any existing trial timer
+      if (trialTimerRef.current) {
+        clearTimeout(trialTimerRef.current);
+      }
+
+      // Start a new interval to update duration and remaining time
+      durationIntervalRef.current = setInterval(() => {
+        if (callStartTime) {
+          const duration = Math.ceil(
+            (Date.now() - callStartTime.getTime()) / 1000
+          );
+          setCallDuration(duration);
+
+          // Update trial time remaining
+          const remaining = Math.max(0, 60 - duration);
+          setTrialTimeRemaining(remaining);
+
+          // Calculate cost for display only (not charged in trial)
+          const cost = (rate * duration) / 60;
+          setEstimatedCost(parseFloat(cost.toFixed(2)));
+
+          // Auto-end call when trial time expires
+          if (remaining === 0 && isConnected) {
+            console.log("Trial time expired, ending call");
+            hangUp();
+            setShowTrialConversionModal(true);
+          }
+        }
+      }, 1000);
+
+      // Set a backup timer to ensure call ends after 60 seconds
+      trialTimerRef.current = setTimeout(() => {
+        if (isConnected) {
+          console.log("Trial time backup timer triggered, ending call");
+          hangUp();
+          setShowTrialConversionModal(true);
+        }
+      }, 61000); // 61 seconds as a safety margin
+    },
+    [callStartTime, isConnected]
+  );
+
+  // Function to stop tracking trial call duration
+  const stopTrialCallTracking = useCallback(async () => {
+    console.log("[TRIAL FLOW] stopTrialCallTracking - Starting");
+
+    // Clear the duration tracking interval
+    if (durationIntervalRef.current) {
+      clearInterval(durationIntervalRef.current);
+      durationIntervalRef.current = null;
+    }
+
+    // Clear the trial timer
+    if (trialTimerRef.current) {
+      clearTimeout(trialTimerRef.current);
+      trialTimerRef.current = null;
+    }
+
+    // Record trial usage
+    if (callStartTime && callDuration > 0 && activeCall?.parameters?.CallSid) {
+      try {
+        console.log(
+          "[TRIAL FLOW] stopTrialCallTracking - Recording trial usage:",
+          {
+            duration: callDuration,
+            callSid: activeCall.parameters.CallSid,
+          }
         );
+
+        // Get device fingerprint and IP address
+        const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+        const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+        console.log("[TRIAL FLOW] stopTrialCallTracking - Identifiers:", {
+          fingerprint: fingerprint?.substring(0, 8) + "...",
+          ipAddress,
+        });
+
+        if (!fingerprint || !ipAddress) {
+          console.error(
+            "[TRIAL FLOW] stopTrialCallTracking - Missing trial identification"
+          );
+          throw new Error("Missing trial identification");
+        }
+
+        // Import the recordTrialUsage function
+        const { recordTrialUsage } = await import("@/lib/trial-limitations");
+
+        // Record usage in Supabase with both IP and fingerprint
+        console.log(
+          "[TRIAL FLOW] stopTrialCallTracking - Calling recordTrialUsage"
+        );
+        await recordTrialUsage(
+          ipAddress as string,
+          fingerprint as string,
+          activeCall.parameters.CallSid,
+          callDuration,
+          callTo || undefined
+        );
+        console.log(
+          "[TRIAL FLOW] stopTrialCallTracking - recordTrialUsage completed"
+        );
+
+        // Directly check the database to verify the record was created/updated
+        await verifyTrialRecordInDatabase(
+          ipAddress as string,
+          fingerprint as string
+        );
+
+        // Track trial call completion in analytics
+        await trackTrialComplete(
+          fingerprint,
+          callDuration,
+          activeCall.parameters.CallSid,
+          callTo || undefined
+        );
+
+        // Track general call metrics with trial flag
+        await trackCallMetrics(
+          null, // No user ID for trial calls
+          activeCall.parameters.CallSid,
+          callDuration,
+          0, // No cost for trial calls
+          callQuality.toString(),
+          true // This is a trial call
+        );
+
+        // Update remaining calls based on the response from recordTrialUsage
+        const { getTrialUsage } = await import("@/lib/trial-limitations");
+        console.log(
+          "[TRIAL FLOW] stopTrialCallTracking - Calling getTrialUsage"
+        );
+        const usage = await getTrialUsage(ipAddress, fingerprint);
+        console.log(
+          "[TRIAL FLOW] stopTrialCallTracking - getTrialUsage result:",
+          usage
+        );
+
+        const oldRemaining = trialCallsRemaining;
+        setTrialCallsRemaining(usage.callsRemaining);
+        console.log(
+          "[TRIAL FLOW] stopTrialCallTracking - Updated trial calls remaining:",
+          {
+            old: oldRemaining,
+            new: usage.callsRemaining,
+            changed: oldRemaining !== usage.callsRemaining,
+          }
+        );
+
+        // If no calls remaining, show the conversion modal
+        if (usage.callsRemaining <= 0) {
+          console.log(
+            "[TRIAL FLOW] stopTrialCallTracking - No calls remaining, showing conversion modal"
+          );
+          setShowTrialConversionModal(true);
+        }
+      } catch (error) {
+        console.error(
+          "[TRIAL FLOW] stopTrialCallTracking - Error recording trial usage:",
+          error
+        );
+
+        // Track the error
+        const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+        if (fingerprint) {
+          await trackTrialError(
+            fingerprint,
+            error instanceof Error
+              ? error.message
+              : "Unknown error recording trial usage",
+            activeCall.parameters.CallSid
+          );
+        }
       }
     } else {
-      console.log("No credits to deduct:", {
+      console.log("[TRIAL FLOW] stopTrialCallTracking - No call to record:", {
         hasCallStartTime: !!callStartTime,
-        hasUser: !!user,
-        duration: callDuration,
+        callDuration,
         hasCallSid: !!activeCall?.parameters?.CallSid,
       });
     }
@@ -399,15 +663,117 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     setCallDuration(0);
     setEstimatedCost(0);
     setCurrentRate(0);
+    console.log("[TRIAL FLOW] stopTrialCallTracking - Completed");
   }, [
     callStartTime,
-    user,
     callDuration,
     activeCall,
     callTo,
-    currentRate,
-    estimatedCost,
+    callQuality,
+    trialCallsRemaining,
   ]);
+
+  // Helper function to verify trial record in database
+  const verifyTrialRecordInDatabase = async (
+    ipAddress: string,
+    fingerprint: string
+  ) => {
+    try {
+      console.log(
+        "[TRIAL FLOW] verifyTrialRecordInDatabase - Checking database for record"
+      );
+
+      // Import the supabase client and admin client
+      const { supabase, supabaseAdmin } = await import("@/lib/supabase");
+
+      // Check for record by IP
+      const { data: ipData, error: ipError } = await supabaseAdmin
+        .from("trial_calls")
+        .select("*")
+        .filter("ip_address", "eq", ipAddress)
+        .maybeSingle();
+
+      console.log(
+        "[TRIAL FLOW] verifyTrialRecordInDatabase - IP query result:",
+        {
+          found: !!ipData,
+          data: ipData
+            ? {
+                ip_address: ipData.ip_address,
+                count: ipData.count,
+                last_call_at: ipData.last_call_at,
+                fingerprint: ipData.device_fingerprint?.substring(0, 8) + "...",
+              }
+            : null,
+          error: ipError
+            ? {
+                code: ipError.code,
+                message: ipError.message,
+              }
+            : null,
+        }
+      );
+
+      // Check for record by fingerprint
+      const { data: fingerprintData, error: fingerprintError } =
+        await supabaseAdmin
+          .from("trial_calls")
+          .select("*")
+          .eq("device_fingerprint", fingerprint)
+          .maybeSingle();
+
+      console.log(
+        "[TRIAL FLOW] verifyTrialRecordInDatabase - Fingerprint query result:",
+        {
+          found: !!fingerprintData,
+          data: fingerprintData
+            ? {
+                ip_address: fingerprintData.ip_address,
+                count: fingerprintData.count,
+                last_call_at: fingerprintData.last_call_at,
+                fingerprint:
+                  fingerprintData.device_fingerprint?.substring(0, 8) + "...",
+              }
+            : null,
+          error: fingerprintError
+            ? {
+                code: fingerprintError.code,
+                message: fingerprintError.message,
+              }
+            : null,
+        }
+      );
+
+      // Get all records for debugging
+      const { data: allRecords, error: allRecordsError } = await supabaseAdmin
+        .from("trial_calls")
+        .select("*")
+        .order("last_call_at", { ascending: false })
+        .limit(5);
+
+      console.log(
+        "[TRIAL FLOW] verifyTrialRecordInDatabase - Recent records:",
+        {
+          count: allRecords?.length || 0,
+          records:
+            allRecords?.map((r) => ({
+              ip_address: r.ip_address,
+              count: r.count,
+              last_call_at: r.last_call_at,
+              fingerprint: r.device_fingerprint?.substring(0, 8) + "...",
+            })) || [],
+          error: allRecordsError
+            ? {
+                code: allRecordsError.code,
+                message: allRecordsError.message,
+              }
+            : null,
+        }
+      );
+    } catch (error) {
+      console.error("[TRIAL FLOW] verifyTrialRecordInDatabase - Error:", error);
+    }
+  };
 
   // Cleanup on unmount only
   useEffect(() => {
@@ -490,6 +856,123 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Error fetching Twilio token:", err);
       return null;
+    }
+  };
+
+  // Function to fetch a trial Twilio token
+  const fetchTrialToken = async (): Promise<{
+    token: string | null;
+    fingerprint: string | null;
+    ipAddress: string | null;
+    trialAvailable: boolean;
+    callsUsed: number;
+  }> => {
+    try {
+      console.log("[TRIAL FLOW] fetchTrialToken - Starting token fetch");
+
+      const response = await fetch(`${apiUrl}/api/twilio/trial-token`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!response.ok) {
+        console.error(
+          "[TRIAL FLOW] fetchTrialToken - Failed to get trial token",
+          response.status,
+          response.statusText
+        );
+        return {
+          token: null,
+          fingerprint: null,
+          ipAddress: null,
+          trialAvailable: false,
+          callsUsed: 0,
+        };
+      }
+
+      const data = await response.json();
+      if (!data.token) {
+        console.error(
+          "[TRIAL FLOW] fetchTrialToken - No token received in response",
+          data
+        );
+        return {
+          token: null,
+          fingerprint: null,
+          ipAddress: null,
+          trialAvailable: false,
+          callsUsed: 0,
+        };
+      }
+
+      console.log("[TRIAL FLOW] fetchTrialToken - Response data:", {
+        fingerprint: data.fingerprint?.substring(0, 8) + "...",
+        ipAddress: data.ipAddress,
+        trialCallsUsed: data.trialCallsUsed,
+        trialCallsRemaining: data.trialCallsRemaining,
+        debug: data.debug,
+      });
+
+      // Store the fingerprint and IP address in localStorage
+      if (data.fingerprint) {
+        const oldFingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+        localStorage.setItem("zkypee_trial_fingerprint", data.fingerprint);
+        console.log("[TRIAL FLOW] fetchTrialToken - Stored fingerprint:", {
+          old: oldFingerprint?.substring(0, 8) + "...",
+          new: data.fingerprint.substring(0, 8) + "...",
+          changed: oldFingerprint !== data.fingerprint,
+        });
+      }
+
+      if (data.ipAddress) {
+        const oldIpAddress = localStorage.getItem("zkypee_trial_ip_address");
+        localStorage.setItem("zkypee_trial_ip_address", data.ipAddress);
+        console.log("[TRIAL FLOW] fetchTrialToken - Stored IP address:", {
+          old: oldIpAddress,
+          new: data.ipAddress,
+          changed: oldIpAddress !== data.ipAddress,
+        });
+      }
+
+      // Set trial calls remaining from the response
+      if (typeof data.trialCallsRemaining === "number") {
+        const oldRemaining = trialCallsRemaining;
+        setTrialCallsRemaining(data.trialCallsRemaining);
+        console.log(
+          "[TRIAL FLOW] fetchTrialToken - Set trial calls remaining:",
+          {
+            old: oldRemaining,
+            new: data.trialCallsRemaining,
+            changed: oldRemaining !== data.trialCallsRemaining,
+          }
+        );
+      }
+
+      // Calculate token expiration time (default to 5 minutes if not provided)
+      const expiresIn = data.ttl || 300; // seconds
+      const newExpirationTime = new Date(Date.now() + expiresIn * 1000);
+      setTokenExpirationTime(newExpirationTime);
+
+      console.log(
+        `[TRIAL FLOW] fetchTrialToken - Token fetched successfully, expires in ${expiresIn} seconds`
+      );
+
+      return {
+        token: data.token,
+        fingerprint: data.fingerprint || null,
+        ipAddress: data.ipAddress || null,
+        trialAvailable: true,
+        callsUsed: data.trialCallsUsed || 0,
+      };
+    } catch (err) {
+      console.error("[TRIAL FLOW] fetchTrialToken - Error:", err);
+      return {
+        token: null,
+        fingerprint: null,
+        ipAddress: null,
+        trialAvailable: false,
+        callsUsed: 0,
+      };
     }
   };
 
@@ -750,8 +1233,84 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     try {
       resetError();
 
+      if (isTrialMode) {
+        // Get current trial fingerprint and IP address from localStorage
+        const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+        const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+        if (fingerprint && ipAddress) {
+          // Fetch current trial usage directly from the API endpoint to ensure we have the latest data
+          console.log(
+            "[TRIAL FLOW] makeCall - Fetching current trial usage from API"
+          );
+          const response = await fetch(
+            `/api/trial/get-usage?fingerprint=${encodeURIComponent(
+              fingerprint
+            )}&ipAddress=${encodeURIComponent(ipAddress)}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`API request failed: ${response.status}`);
+          }
+
+          const usage = await response.json();
+          console.log(
+            "[TRIAL FLOW] makeCall - Current trial usage from API:",
+            usage
+          );
+
+          // Update trial calls remaining based on the database
+          setTrialCallsRemaining(usage.callsRemaining);
+          console.log(
+            "[TRIAL FLOW] makeCall - Updated trial calls remaining to:",
+            usage.callsRemaining
+          );
+
+          // Check if user has any trial calls remaining based on the database
+          if (usage.callsRemaining <= 0) {
+            console.log(
+              "[TRIAL FLOW] makeCall - No calls remaining, showing conversion modal"
+            );
+            setError("Trial calls limit reached. Please sign up to continue.");
+            setShowTrialConversionModal(true);
+            return false;
+          }
+        } else {
+          // When fingerprint or IP isn't available, attempt to get new ones
+          console.log(
+            "[TRIAL FLOW] makeCall - Missing trial identification, attempting to initialize trial mode"
+          );
+
+          // Initialize trial mode to get new fingerprint and IP
+          const initialized = await initializeTrialMode();
+          if (!initialized) {
+            console.error(
+              "[TRIAL FLOW] makeCall - Failed to initialize trial mode"
+            );
+            setError("Failed to verify trial status. Please try again.");
+            return false;
+          }
+
+          // After initialization, check trial calls remaining based on what we retrieved from DB
+          if (trialCallsRemaining <= 0) {
+            console.log(
+              "[TRIAL FLOW] makeCall - No calls remaining after initialization"
+            );
+            setError("Trial calls limit reached. Please sign up to continue.");
+            setShowTrialConversionModal(true);
+            return false;
+          }
+        }
+      } else {
+        // Regular call - check credits
+        const hasEnoughCredits = await checkCredits(1); // Check for at least 1 minute
+        if (!hasEnoughCredits) return false;
+      }
+
       if (!device || !isReady) {
-        const initialized = await initializeDevice();
+        const initialized = isTrialMode
+          ? await initializeTrialMode()
+          : await initializeDevice();
         if (!initialized) return false;
       }
 
@@ -761,10 +1320,6 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       );
       const rateInfo = await response.json();
       const rate = rateInfo.rate || COST_PER_MINUTE;
-
-      // Check if user has enough credits
-      const hasEnoughCredits = await checkCredits(1); // Check for at least 1 minute
-      if (!hasEnoughCredits) return false;
 
       setIsConnecting(true);
       setStatus(CallStatus.CONNECTING);
@@ -789,14 +1344,120 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           console.log("Call accepted");
           setIsConnected(true);
           setStatus(CallStatus.CONNECTED);
-          startCallTracking(rate);
+
+          if (isTrialMode) {
+            // Start trial timer
+            startTrialCallTracking(rate);
+
+            // Remove manual decrement and instead rely on database
+            console.log("[TRIAL FLOW] Call accepted - Recording trial usage");
+
+            // Record the trial usage immediately when the call is accepted
+            const recordTrialUsageOnAccept = async () => {
+              try {
+                const fingerprint = localStorage.getItem(
+                  "zkypee_trial_fingerprint"
+                );
+                const ipAddress = localStorage.getItem(
+                  "zkypee_trial_ip_address"
+                );
+
+                if (!fingerprint || !ipAddress) {
+                  console.error(
+                    "[TRIAL FLOW] Missing trial identification on call accept"
+                  );
+                  return;
+                }
+
+                // Import the recordTrialUsage function
+                const { recordTrialUsage } = await import(
+                  "@/lib/trial-limitations"
+                );
+
+                // Record usage in Supabase with both IP and fingerprint
+                console.log(
+                  "[TRIAL FLOW] Call accepted - Recording trial usage"
+                );
+                if (fingerprint && ipAddress && call.parameters.CallSid) {
+                  const ipAddressStr: string = ipAddress;
+                  const fingerprintStr: string = fingerprint;
+
+                  await recordTrialUsage(
+                    ipAddressStr,
+                    fingerprintStr,
+                    call.parameters.CallSid,
+                    1, // Minimum duration of 1 second
+                    phoneNumber
+                  );
+
+                  // Get updated trial usage directly from API
+                  console.log(
+                    "[TRIAL FLOW] Call accepted - Fetching updated trial usage from API"
+                  );
+                  const response = await fetch(
+                    `/api/trial/get-usage?fingerprint=${encodeURIComponent(
+                      fingerprintStr
+                    )}&ipAddress=${encodeURIComponent(ipAddressStr)}`
+                  );
+
+                  if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                  }
+
+                  const usage = await response.json();
+                  console.log(
+                    "[TRIAL FLOW] Call accepted - Updated trial usage from API:",
+                    usage
+                  );
+
+                  // Update UI with latest database value
+                  setTrialCallsRemaining(usage.callsRemaining);
+                  console.log(
+                    "[TRIAL FLOW] Call accepted - Updated trial calls remaining to:",
+                    usage.callsRemaining
+                  );
+
+                  // Verify the record was created/updated
+                  await verifyTrialRecordInDatabase(
+                    ipAddressStr,
+                    fingerprintStr
+                  );
+                } else {
+                  console.error(
+                    "[TRIAL FLOW] Missing fingerprint, ipAddress, or CallSid for recordTrialUsage"
+                  );
+                }
+              } catch (error) {
+                console.error(
+                  "[TRIAL FLOW] Error recording trial usage on call accept:",
+                  error
+                );
+              }
+            };
+
+            // Execute the async function
+            recordTrialUsageOnAccept();
+          } else {
+            // Regular call tracking
+            startCallTracking(rate);
+          }
         });
 
         call.on("disconnect", () => {
           console.log("Call disconnected");
           setIsConnected(false);
-          setStatus(CallStatus.IDLE);
-          stopCallTracking();
+          setStatus(CallStatus.READY);
+
+          if (isTrialMode) {
+            stopTrialCallTracking();
+            // Don't decrement trial calls here since we already did it on accept
+            // setTrialCallsRemaining((prev) => prev - 1);
+
+            // Show conversion modal after trial call ends
+            setShowTrialConversionModal(true);
+          } else {
+            stopCallTracking();
+          }
         });
 
         return true;
@@ -807,49 +1468,6 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       setStatus(CallStatus.ERROR);
       setIsConnecting(false);
       return false;
-    }
-  };
-
-  // Function to hang up the call
-  const hangUp = () => {
-    try {
-      console.log(
-        "Hanging up call, activeCall:",
-        !!activeCall,
-        "device:",
-        !!device
-      );
-
-      if (activeCall) {
-        console.log("Hanging up active call");
-        activeCall.disconnect();
-      } else if (device) {
-        console.log("No active call, disconnecting all calls");
-        device.disconnectAll();
-      }
-
-      // Clean up the audio stream
-      if (audioStreamRef.current) {
-        audioStreamRef.current.getTracks().forEach((track) => track.stop());
-        audioStreamRef.current = null;
-      }
-
-      // Ensure state is updated even if disconnect events don't fire
-      setActiveCall(null);
-      setConnection(null);
-      setIsConnected(false);
-      setStatus(CallStatus.READY);
-
-      // Update debug info
-      setDebugInfo({
-        lastAction: "hang_up",
-        timestamp: Date.now(),
-        status: status,
-        error: null,
-      });
-    } catch (error: any) {
-      console.error("Error hanging up call:", error);
-      setError(error.message);
     }
   };
 
@@ -1215,6 +1833,230 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     return initializeDevice();
   };
 
+  // Initialize trial mode
+  const initializeTrialMode = useCallback(async (): Promise<boolean> => {
+    console.log("[TRIAL FLOW] initializeTrialMode - Starting");
+
+    try {
+      // Check if we already have a trial token
+      const existingToken = localStorage.getItem("zkypee_trial_token");
+      const existingFingerprint = localStorage.getItem(
+        "zkypee_trial_fingerprint"
+      );
+      const existingIpAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+      console.log("[TRIAL FLOW] initializeTrialMode - Existing data:", {
+        hasToken: !!existingToken,
+        hasFingerprint: !!existingFingerprint,
+        hasIpAddress: !!existingIpAddress,
+        fingerprint: existingFingerprint
+          ? existingFingerprint.substring(0, 8) + "..."
+          : null,
+      });
+
+      // Fetch a new trial token
+      console.log("[TRIAL FLOW] initializeTrialMode - Fetching trial token");
+      const tokenResponse = await fetchTrialToken();
+
+      console.log("[TRIAL FLOW] initializeTrialMode - Trial token response:", {
+        received: !!tokenResponse.token,
+        trialAvailable: tokenResponse.trialAvailable,
+        callsUsed: tokenResponse.callsUsed,
+        fingerprint: tokenResponse.fingerprint
+          ? tokenResponse.fingerprint.substring(0, 8) + "..."
+          : null,
+        ipAddress: tokenResponse.ipAddress,
+      });
+
+      if (!tokenResponse.token) {
+        console.error(
+          "[TRIAL FLOW] initializeTrialMode - Failed to get trial token"
+        );
+        setError("Failed to initialize trial mode");
+        setStatus(CallStatus.ERROR);
+        return false;
+      }
+
+      // Set the trial token in state
+      setTokenExpirationTime(new Date(Date.now() + 300000)); // 5 minutes
+
+      // Get the trial variant
+      // Use non-null assertion to tell TypeScript that fingerprint is not null
+      const trialVariant = getTrialVariant(tokenResponse.fingerprint!);
+      console.log(
+        "[TRIAL FLOW] initializeTrialMode - Trial variant:",
+        trialVariant
+      );
+
+      // Set trial mode to true
+      setIsTrialMode(true);
+
+      // After getting the token, fetch the current trial usage from the database
+      // to get the accurate callsRemaining value
+      if (tokenResponse.fingerprint && tokenResponse.ipAddress) {
+        try {
+          const { getTrialUsage } = await import("@/lib/trial-limitations");
+          console.log(
+            "[TRIAL FLOW] initializeTrialMode - Fetching trial usage from database"
+          );
+          const usage = await getTrialUsage(
+            tokenResponse.ipAddress,
+            tokenResponse.fingerprint
+          );
+
+          console.log(
+            "[TRIAL FLOW] initializeTrialMode - Database trial usage:",
+            usage
+          );
+
+          // Set the trial calls remaining based on the database response
+          setTrialCallsRemaining(usage.callsRemaining);
+          console.log(
+            "[TRIAL FLOW] initializeTrialMode - Set trial calls remaining to:",
+            usage.callsRemaining
+          );
+
+          // If no calls remaining, show the conversion modal
+          if (usage.callsRemaining <= 0) {
+            console.log(
+              "[TRIAL FLOW] initializeTrialMode - No calls remaining, showing conversion modal"
+            );
+            setShowTrialConversionModal(true);
+          }
+        } catch (error) {
+          console.error(
+            "[TRIAL FLOW] initializeTrialMode - Error fetching trial usage:",
+            error
+          );
+        }
+      } else {
+        console.log(
+          "[TRIAL FLOW] initializeTrialMode - Missing fingerprint or IP address, cannot fetch trial usage"
+        );
+      }
+
+      // Use the same device initialization pattern as regular calls
+      return await suppressTwilioTokenLogs(async () => {
+        // Create new device
+        const newDevice = new Device(tokenResponse.token, {
+          logLevel: "debug",
+          allowIncomingWhileBusy: true,
+          closeProtection: true,
+          codecPreferences: ["pcmu", "opus"] as any,
+        });
+
+        // Set up event handlers
+        newDevice.on("registered", () => {
+          console.log(
+            "[TRIAL FLOW] initializeTrialMode - Twilio trial device is ready"
+          );
+          setStatus(CallStatus.READY);
+          setIsReady(true);
+          setIsConnecting(false);
+          setTrialTimeRemaining(60); // Reset to 60 seconds
+        });
+
+        newDevice.on("error", (error: Error) => {
+          console.error(
+            "[TRIAL FLOW] initializeTrialMode - Twilio device error:",
+            error
+          );
+          setError(error.message);
+          setStatus(CallStatus.ERROR);
+          setIsConnecting(false);
+        });
+
+        // Register the device
+        await newDevice.register();
+        setDevice(newDevice);
+        console.log(
+          "[TRIAL FLOW] initializeTrialMode - Completed successfully"
+        );
+        return true;
+      });
+    } catch (error) {
+      console.error("[TRIAL FLOW] initializeTrialMode - Error:", error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to initialize trial mode"
+      );
+      setStatus(CallStatus.ERROR);
+      return false;
+    }
+  }, [
+    fetchTrialToken,
+    setError,
+    setStatus,
+    setIsTrialMode,
+    setTrialCallsRemaining,
+    setDevice,
+    setIsReady,
+    setIsConnecting,
+    setTrialTimeRemaining,
+  ]);
+
+  // Add useEffect to fetch current trial usage when component mounts
+  useEffect(() => {
+    const checkTrialStatus = async () => {
+      if (typeof window === "undefined") return;
+
+      // Check if we have trial fingerprint and IP address in localStorage
+      const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+      const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+      if (!fingerprint || !ipAddress) return;
+
+      console.log(
+        "[TRIAL FLOW] checkTrialStatus - Found trial data in localStorage:",
+        {
+          fingerprint: fingerprint.substring(0, 8) + "...",
+          ipAddress,
+        }
+      );
+
+      try {
+        // Set trial mode to true if we have trial data
+        setIsTrialMode(true);
+
+        // Fetch current trial usage from the database
+        const { getTrialUsage } = await import("@/lib/trial-limitations");
+        console.log("[TRIAL FLOW] checkTrialStatus - Fetching trial usage");
+        const usage = await getTrialUsage(ipAddress, fingerprint);
+
+        console.log(
+          "[TRIAL FLOW] checkTrialStatus - Trial usage result:",
+          usage
+        );
+
+        // Update trial calls remaining based on the database
+        setTrialCallsRemaining(usage.callsRemaining);
+        console.log(
+          "[TRIAL FLOW] checkTrialStatus - Updated trial calls remaining to:",
+          usage.callsRemaining
+        );
+
+        // If no calls remaining, show the conversion modal
+        if (usage.callsRemaining <= 0) {
+          console.log(
+            "[TRIAL FLOW] checkTrialStatus - No calls remaining, showing conversion modal"
+          );
+          setShowTrialConversionModal(true);
+        }
+      } catch (error) {
+        console.error("[TRIAL FLOW] checkTrialStatus - Error:", error);
+      }
+    };
+
+    // Run the check when component mounts or when trial calls remaining changes
+    checkTrialStatus();
+  }, [
+    isTrialMode,
+    trialCallsRemaining,
+    setTrialCallsRemaining,
+    setShowTrialConversionModal,
+  ]);
+
   const value: TwilioContextType = {
     status,
     isReady,
@@ -1246,6 +2088,14 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     callTo,
     callStartTime,
     resetError,
+    // Trial mode properties
+    isTrialMode,
+    trialCallsRemaining,
+    setTrialCallsRemaining,
+    trialTimeRemaining,
+    initializeTrialMode,
+    showTrialConversionModal,
+    setShowTrialConversionModal,
   };
 
   return (

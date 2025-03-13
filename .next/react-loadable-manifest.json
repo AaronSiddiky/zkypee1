@@ -1,4 +1,12 @@
 {
+  "contexts/TwilioContext.tsx -> @/lib/supabase": {
+    "id": "contexts/TwilioContext.tsx -> @/lib/supabase",
+    "files": []
+  },
+  "contexts/TwilioContext.tsx -> @/lib/trial-limitations": {
+    "id": "contexts/TwilioContext.tsx -> @/lib/trial-limitations",
+    "files": []
+  },
   "node_modules/@supabase/auth-js/dist/module/lib/helpers.js -> @supabase/node-fetch": {
     "id": "node_modules/@supabase/auth-js/dist/module/lib/helpers.js -> @supabase/node-fetch",
     "files": []

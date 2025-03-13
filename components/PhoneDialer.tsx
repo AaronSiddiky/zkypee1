@@ -24,6 +24,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { playDTMF, cleanupAudio } from "@/lib/audio";
 import { deductCreditsForCall } from "@/lib/credits";
+import { trackEvent } from "@/lib/analytics";
 
 // Country codes data
 const countryCodes = [
@@ -542,6 +543,14 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     checkCredits,
     status,
     callStartTime,
+    // Add trial-related properties from TwilioContext
+    isTrialMode,
+    trialCallsRemaining,
+    trialTimeRemaining,
+    initializeTrialMode,
+    showTrialConversionModal,
+    setShowTrialConversionModal,
+    setTrialCallsRemaining, // Add this line to destructure setTrialCallsRemaining
   } = useTwilio();
 
   // Add state for call rate and SID
@@ -775,7 +784,8 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   };
 
   const handleNumberClick = (num: string) => {
-    if (!user) {
+    // Allow dial pad usage in trial mode without requiring login
+    if (!user && !isTrialMode) {
       setShowAuth(true);
       return;
     }
@@ -836,6 +846,53 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       return;
     }
 
+    // If in trial mode, check the latest trial usage before making a call
+    if (isTrialMode) {
+      try {
+        // Get stored identifiers
+        const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+        const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+        if (fingerprint && ipAddress) {
+          // Directly fetch from API endpoint for most up-to-date values
+          console.log(
+            "[TRIAL UI] Checking trial usage before call directly from API"
+          );
+          const response = await fetch(
+            `/api/trial/get-usage?fingerprint=${encodeURIComponent(
+              fingerprint
+            )}&ipAddress=${encodeURIComponent(ipAddress)}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`API request failed: ${response.status}`);
+          }
+
+          const usage = await response.json();
+          console.log("[TRIAL UI] Current trial usage from API:", usage);
+
+          // Always update the UI with the latest data from the database
+          setTrialCallsRemaining(usage.callsRemaining);
+          console.log(
+            "[TRIAL UI] Updated trial calls remaining to:",
+            usage.callsRemaining
+          );
+
+          // If no calls remaining, show the conversion modal and prevent the call
+          if (usage.callsRemaining <= 0) {
+            console.log(
+              "[TRIAL UI] No calls remaining, showing conversion modal"
+            );
+            setShowTrialConversionModal(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("[TRIAL UI] Error checking trial usage:", error);
+        // Continue with the call attempt even if there's an error checking usage
+      }
+    }
+
     // Format the full number with country code
     const fullNumber = formatPhoneNumberForCall(
       phoneNumber,
@@ -843,10 +900,13 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     );
     setFullPhoneNumber(fullNumber);
 
-    // Check credits first
-    const hasCredits = await checkCredits(10);
-    if (!hasCredits) {
-      return;
+    // For trial mode, we don't need to check credits
+    if (!isTrialMode) {
+      // Check credits first (only for non-trial users)
+      const hasCredits = await checkCredits(10);
+      if (!hasCredits) {
+        return;
+      }
     }
 
     // Request microphone permission if not already granted
@@ -872,7 +932,12 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
         if (!initAttemptedRef.current) {
           initAttemptedRef.current = true;
           console.log("Initializing Twilio device...");
-          const initialized = await initializeDevice();
+
+          // Use the appropriate initialization method based on mode
+          const initialized = isTrialMode
+            ? await initializeTrialMode()
+            : await initializeDevice();
+
           console.log("Initialization result:", initialized);
 
           // If initialization failed, set a timeout to allow retry later
@@ -933,12 +998,6 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
           isConnecting: false,
         }));
       }
-
-      if (!callSuccess && error?.includes("Authentication required")) {
-        // If there's an authentication error, show the auth modal
-        console.log("Authentication error detected, showing auth modal");
-        setShowAuth(true);
-      }
     } catch (err) {
       console.error("Error making call:", err);
       setLocalCallState((prev) => ({
@@ -947,7 +1006,7 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
         isConnecting: false,
       }));
     }
-  };
+  }; // This should be the proper closing of the handleCall function
 
   const handleHangUp = () => {
     console.log("Hanging up call");
@@ -1038,32 +1097,48 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
       return;
     }
 
-    // Update local state immediately for visual feedback
-    setLocalCallState((prev) => ({
-      ...prev,
-      isMuted: !prev.isMuted,
-    }));
+    try {
+      // Calculate the new mute state (opposite of current state)
+      const newMuteState = !isMuted;
 
-    // Call the context's toggleMute function
-    toggleMute();
+      // Update local state immediately for visual feedback
+      setLocalCallState((prev) => ({
+        ...prev,
+        isMuted: newMuteState,
+      }));
 
-    // Check if the state was properly updated after a short delay
-    setTimeout(() => {
-      console.log("Mute state after toggle:", {
-        localMuted: localCallState.isMuted,
-        contextMuted: isMuted,
-        isConnected: twilioConnected,
-      });
+      // Call the context's toggleMute function
+      toggleMute();
 
-      // If there's a mismatch between local and context state, update local state
-      if (localCallState.isMuted !== isMuted) {
-        console.warn("Mute state mismatch detected, syncing states");
-        setLocalCallState((prev) => ({
-          ...prev,
-          isMuted: isMuted,
-        }));
-      }
-    }, 500);
+      // Verify the mute state was properly updated after a short delay
+      setTimeout(() => {
+        console.log("Mute state after toggle:", {
+          localMuted: localCallState.isMuted,
+          contextMuted: isMuted,
+          isConnected: twilioConnected,
+        });
+
+        // If there's a mismatch between local and context state, sync with context state
+        // This ensures the UI always reflects the actual mute state
+        if (localCallState.isMuted !== isMuted) {
+          console.warn(
+            "Mute state mismatch detected, syncing with context state"
+          );
+          setLocalCallState((prev) => ({
+            ...prev,
+            isMuted: isMuted,
+          }));
+        }
+      }, 300);
+    } catch (error) {
+      console.error("Error toggling mute state:", error);
+
+      // If an error occurs, reset to the context state
+      setLocalCallState((prev) => ({
+        ...prev,
+        isMuted: isMuted,
+      }));
+    }
   };
 
   // Update to track the call SID when connection object changes
@@ -1075,140 +1150,361 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     }
   }, [connection]);
 
-  // Render authentication UI if user is not logged in
-  if (!loading && !user) {
+  // Add TrialModeIndicator component
+  const TrialModeIndicator = () => {
+    // Return null to hide the trial mode indicator completely
+    return null;
+
+    /* Original implementation removed
+    if (!isTrialMode) return null;
+
+    // Add function to refresh trial usage
+    const refreshTrialUsage = async () => {
+      try {
+        // Get stored identifiers
+        const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+        const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+        if (!fingerprint || !ipAddress) {
+          console.error("[TRIAL UI] Missing fingerprint or IP address");
+          return;
+        }
+
+        // Directly fetch from API endpoint for most up-to-date values
+        console.log("[TRIAL UI] Refreshing trial usage directly from API");
+        const response = await fetch(
+          `/api/trial/get-usage?fingerprint=${encodeURIComponent(
+            fingerprint
+          )}&ipAddress=${encodeURIComponent(ipAddress)}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
+        }
+
+        const usage = await response.json();
+        console.log("[TRIAL UI] Current trial usage from API:", usage);
+
+        // Update the UI with the latest data from the database
+        // Use the context function to update the state
+        setTrialCallsRemaining(usage.callsRemaining);
+        console.log(
+          "[TRIAL UI] Updated trial calls remaining to:",
+          usage.callsRemaining
+        );
+
+        // If no calls remaining, show the conversion modal
+        if (usage.callsRemaining <= 0) {
+          console.log(
+            "[TRIAL UI] No calls remaining, showing conversion modal"
+          );
+          setShowTrialConversionModal(true);
+        }
+      } catch (error) {
+        console.error("[TRIAL UI] Error refreshing trial usage:", error);
+      }
+    };
+
+    return (
+      <div className="mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-lg flex justify-between items-center">
+        <div className="flex-1">
+          <span className="text-sm font-medium text-yellow-800">
+            Trial Mode{" "}
+            {localCallState.isConnected && `• ${trialTimeRemaining}s remaining`}
+          </span>
+          <div className="mt-1 text-xs text-yellow-700 flex items-center">
+            <span>
+              {trialCallsRemaining} trial call
+              {trialCallsRemaining !== 1 ? "s" : ""} remaining
+            </span>
+            <button
+              onClick={refreshTrialUsage}
+              className="ml-2 text-blue-500 hover:text-blue-700"
+              title="Refresh trial usage"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3 w-3"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <button
+          onClick={() => setShowAuth(true)}
+          className="text-xs bg-green-600 hover:bg-green-700 text-white py-1 px-3 rounded-md transition-colors"
+        >
+          Sign Up
+        </button>
+      </div>
+    );
+    */
+  };
+
+  // Add handleTryNowClick function
+  const handleTryNowClick = async () => {
+    try {
+      // Track the trial button click
+      await trackEvent("trial_button_click", {
+        location: "phone_dialer",
+      });
+
+      // Initialize trial mode
+      const success = await initializeTrialMode();
+
+      if (success) {
+        // Track successful initialization
+        await trackEvent("trial_initialized", {
+          success: true,
+        });
+      } else {
+        // Track failed initialization
+        await trackEvent("trial_initialized", {
+          success: false,
+          error: error || "Unknown error",
+        });
+      }
+    } catch (err) {
+      console.error("Error starting trial:", err);
+    }
+  };
+
+  // Update TrialConversionModal component
+  const TrialConversionModal = () => {
+    if (!showTrialConversionModal) return null;
+
+    // Track modal shown
+    useEffect(() => {
+      trackEvent("trial_conversion_modal_shown", {
+        callsRemaining: trialCallsRemaining,
+      });
+    }, []);
+
+    const handleCreateAccountClick = () => {
+      // Track conversion intent
+      trackEvent("trial_conversion_intent", {
+        action: "create_account",
+      });
+
+      setShowTrialConversionModal(false);
+      setShowAuth(true);
+    };
+
+    const handleMaybeLaterClick = () => {
+      // Track conversion dismissed
+      trackEvent("trial_conversion_intent", {
+        action: "maybe_later",
+      });
+
+      setShowTrialConversionModal(false);
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <h3 className="text-xl font-bold text-gray-800 mb-2">
+            Your trial call has ended
+          </h3>
+
+          <p className="text-gray-600 mb-4">
+            Ready to make more calls? Create an account to get started with full
+            access.
+          </p>
+
+          <div className="bg-blue-50 p-3 rounded-lg mb-4">
+            <h4 className="font-medium text-blue-800 mb-1">
+              With a full account you get:
+            </h4>
+            <ul className="text-blue-700 text-sm space-y-1">
+              <li className="flex items-center">
+                <svg
+                  className="h-4 w-4 mr-2 text-blue-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Unlimited call duration
+              </li>
+              <li className="flex items-center">
+                <svg
+                  className="h-4 w-4 mr-2 text-blue-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Call anyone worldwide
+              </li>
+              <li className="flex items-center">
+                <svg
+                  className="h-4 w-4 mr-2 text-blue-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Crystal clear HD audio
+              </li>
+              <li className="flex items-center">
+                <svg
+                  className="h-4 w-4 mr-2 text-blue-600"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Save favorite contacts
+              </li>
+            </ul>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={handleCreateAccountClick}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg"
+            >
+              Create Account
+            </button>
+            <button
+              onClick={handleMaybeLaterClick}
+              className="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg"
+            >
+              Maybe Later
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Add useEffect to initialize trial mode when component loads
+  useEffect(() => {
+    // If we're in trial mode but the device isn't ready, initialize it
+    if (isTrialMode && !isReady && !initAttemptedRef.current) {
+      console.log("Auto-initializing trial mode");
+      initAttemptedRef.current = true;
+
+      initializeTrialMode().then((success) => {
+        console.log("Trial mode auto-initialization result:", success);
+        // Reset the attempt flag after a delay to allow retries if needed
+        setTimeout(() => {
+          initAttemptedRef.current = false;
+        }, 5000);
+      });
+    }
+  }, [isTrialMode, isReady, initializeTrialMode]);
+
+  // Add useEffect to refresh trial usage when component mounts
+  useEffect(() => {
+    if (isTrialMode) {
+      const refreshTrialUsageOnMount = async () => {
+        try {
+          // Get stored identifiers
+          const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
+          const ipAddress = localStorage.getItem("zkypee_trial_ip_address");
+
+          if (!fingerprint || !ipAddress) {
+            console.error("[TRIAL UI] Missing fingerprint or IP address");
+            return;
+          }
+
+          // Directly fetch from API endpoint for most up-to-date values
+          console.log("[TRIAL UI] Initial refresh of trial usage from API");
+          const response = await fetch(
+            `/api/trial/get-usage?fingerprint=${encodeURIComponent(
+              fingerprint
+            )}&ipAddress=${encodeURIComponent(ipAddress)}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`API request failed: ${response.status}`);
+          }
+
+          const usage = await response.json();
+          console.log("[TRIAL UI] Current trial usage from API:", usage);
+
+          // Update the UI with the latest data from the database
+          setTrialCallsRemaining(usage.callsRemaining);
+          console.log(
+            "[TRIAL UI] Updated trial calls remaining to:",
+            usage.callsRemaining
+          );
+
+          // If no calls remaining, show the conversion modal
+          if (usage.callsRemaining <= 0) {
+            console.log(
+              "[TRIAL UI] No calls remaining, showing conversion modal"
+            );
+            setShowTrialConversionModal(true);
+          }
+        } catch (error) {
+          console.error("[TRIAL UI] Error refreshing trial usage:", error);
+        }
+      };
+
+      refreshTrialUsageOnMount();
+
+      // Set up an interval to refresh the trial usage every few seconds
+      const refreshInterval = setInterval(refreshTrialUsageOnMount, 3000);
+
+      // Clean up interval on unmount
+      return () => clearInterval(refreshInterval);
+    }
+  }, [isTrialMode, setTrialCallsRemaining, setShowTrialConversionModal]);
+
+  // Render authentication UI with trial option
+  if (!loading && !user && !isTrialMode) {
     return (
       <div className="w-full">
         <h1 className="text-2xl font-bold mb-4">Make a Call</h1>
         <p className="text-gray-600 mb-6">Enter a phone number to call</p>
 
         <div className="w-full bg-gradient-to-br from-gray-50 to-blue-50 border border-blue-100 rounded-xl shadow-md p-5 mb-6">
-          <div className="flex items-start">
-            {/* Lock Icon */}
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4 flex-shrink-0">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6 text-blue-500"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-
-            <div className="flex-1">
-              {/* Title and Description */}
-              <h3 className="text-xl font-bold text-blue-800 mb-1">
-                Authentication Required
-              </h3>
-              <p className="text-gray-600 text-sm mb-3">
-                You need to sign in to make phone calls.
-              </p>
-
-              {/* Benefits */}
-              <div className="bg-white rounded-lg p-3 mb-3 w-full">
-                <p className="text-xs text-gray-500 mb-1 font-medium">
-                  Sign in to enjoy these benefits:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                  <div className="flex items-center">
-                    <svg
-                      className="h-3 w-3 text-green-500 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-xs text-gray-600">
-                      Track call history
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg
-                      className="h-3 w-3 text-green-500 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-xs text-gray-600">
-                      Manage credits
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg
-                      className="h-3 w-3 text-green-500 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-xs text-gray-600">
-                      Call worldwide
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <svg
-                      className="h-3 w-3 text-green-500 mr-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-xs text-gray-600">
-                      Save favorites
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Sign In Button with Animation */}
-              <button
-                onClick={() => setShowAuth(true)}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200 transform hover:scale-[1.02] hover:shadow relative overflow-hidden group"
-              >
-                <span className="relative z-10">Sign In to Continue</span>
-                <span className="absolute inset-0 bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></span>
-              </button>
-
-              {/* Privacy Note */}
-              <p className="text-xs text-gray-400 mt-2 text-center">
-                Your information is secure and will only be used for
-                authentication.
-              </p>
-            </div>
+          <p className="text-center mb-4">
+            Sign in to your account or try our service without signing up
+          </p>
+          <div className="flex space-x-4 mt-4">
+            <button
+              onClick={() => setShowAuth(true)}
+              className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={handleTryNowClick}
+              className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all duration-200"
+            >
+              Try Now
+            </button>
           </div>
         </div>
 
-        {/* Auth Modal */}
         {showAuth && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
@@ -1239,279 +1535,342 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
     );
   }
 
+  // Modify the main return to include trial components
   return (
-    <div className="flex flex-col w-full max-w-md mx-auto bg-white rounded-xl shadow-sm p-5 border border-gray-200">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-gray-800">Phone Dialer</h2>
-        {twilioNumber && (
-          <p className="text-sm text-gray-600">
-            Calling from: <span className="font-medium">{twilioNumber}</span>
-          </p>
-        )}
-      </div>
+    <div className="w-full">
+      {/* Remove trial indicator at the top */}
+      {/* <TrialModeIndicator /> */}
 
-      {/* Show retry button if initialization failed */}
-      {initializationFailed && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-sm text-red-700 mb-2">
-            Failed to initialize the phone system. This could be due to a
-            network issue.
-          </p>
-          <button
-            onClick={handleRetryInitialization}
-            disabled={initAttemptedRef.current}
-            className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-800 rounded-md transition-colors"
-          >
-            {initAttemptedRef.current ? "Retrying..." : "Retry Connection"}
-          </button>
+      {/* Existing phone dialer UI */}
+      <div className="flex flex-col w-full max-w-md mx-auto bg-white rounded-xl shadow-sm p-5 border border-gray-200">
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold text-gray-800">Phone Dialer</h2>
+          {twilioNumber && (
+            <p className="text-sm text-gray-600">
+              Calling from: <span className="font-medium">{twilioNumber}</span>
+            </p>
+          )}
         </div>
-      )}
 
-      {/* Credit Balance */}
-      <div className="mb-4">
-        <CreditBalance />
-      </div>
-
-      {/* Phone number input with country code */}
-      <div
-        className={`relative mb-4 ${
-          localCallState.isConnected ? "opacity-50" : ""
-        }`}
-      >
-        <div className="flex">
-          {/* Country code selector */}
-          <div className="relative" ref={countryDropdownRef}>
+        {/* Show retry button if initialization failed */}
+        {initializationFailed && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-700 mb-2">
+              Failed to initialize the phone system. This could be due to a
+              network issue.
+            </p>
             <button
-              type="button"
-              onClick={() => setShowCountryCodes(!showCountryCodes)}
-              className="flex items-center justify-between w-28 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-              disabled={localCallState.isConnected}
+              onClick={handleRetryInitialization}
+              disabled={initAttemptedRef.current}
+              className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-800 rounded-md transition-colors"
             >
-              <span className="flex items-center">
-                <span className="mr-2 text-lg">{selectedCountryCode.flag}</span>
-                <span>{selectedCountryCode.code}</span>
-              </span>
-              <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-500" />
+              {initAttemptedRef.current ? "Retrying..." : "Retry Connection"}
             </button>
-
-            {/* Country code dropdown with search */}
-            <AnimatePresence>
-              {showCountryCodes && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="absolute z-10 w-72 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden flex flex-col"
-                >
-                  <div className="p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
-                    <div className="relative">
-                      <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                      <input
-                        ref={searchInputRef}
-                        type="text"
-                        value={searchCountry}
-                        onChange={(e) => setSearchCountry(e.target.value)}
-                        placeholder="Search country or code..."
-                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      {searchCountry && (
-                        <button
-                          onClick={() => setSearchCountry("")}
-                          className="absolute right-3 top-2.5"
-                        >
-                          <XMarkIcon className="h-5 w-5 text-gray-400" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="overflow-y-auto max-h-60">
-                    {filteredCountryCodes.length === 0 ? (
-                      <div className="p-4 text-gray-500 text-center">
-                        No countries found
-                      </div>
-                    ) : (
-                      filteredCountryCodes.map((country) => (
-                        <button
-                          key={`${country.code}-${country.name}`}
-                          type="button"
-                          className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-100"
-                          onClick={() => {
-                            setSelectedCountryCode(country);
-                            setShowCountryCodes(false);
-                            setSearchCountry("");
-                          }}
-                        >
-                          <span className="mr-2 text-lg">{country.flag}</span>
-                          <span className="font-medium">{country.code}</span>
-                          <span className="ml-2 text-sm text-gray-600">
-                            {country.name}
-                          </span>
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
+        )}
 
-          {/* Phone number input */}
-          <div className="relative flex-grow">
-            <input
-              type="tel"
-              value={formatPhoneNumberForDisplay(phoneNumber)}
-              onChange={(e) => {
-                // Filter non-numeric characters except for + at the beginning
-                const value = e.target.value;
-                const cleaned = value
-                  .replace(/[^\d\s+()-]/g, "")
-                  .replace(/\s+/g, " ");
-                setPhoneNumber(cleaned);
-              }}
-              placeholder="Enter phone number"
-              className="w-full h-full px-4 py-2 border border-gray-300 border-l-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
-              disabled={localCallState.isConnected}
-            />
-            {phoneNumber && (
+        {/* Credit Balance - Only show for authenticated users, not trial users */}
+        {!isTrialMode && (
+          <div className="mb-4">
+            <CreditBalance />
+          </div>
+        )}
+
+        {/* Phone number input with country code */}
+        <div
+          className={`relative mb-4 ${
+            localCallState.isConnected ? "opacity-50" : ""
+          }`}
+        >
+          <div className="flex">
+            {/* Country code selector */}
+            <div className="relative" ref={countryDropdownRef}>
               <button
-                onClick={handleDelete}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                type="button"
+                onClick={() => setShowCountryCodes(!showCountryCodes)}
+                className="flex items-center justify-between w-28 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
                 disabled={localCallState.isConnected}
               >
-                <BackspaceIcon className="h-5 w-5" />
+                <span className="flex items-center">
+                  <span className="mr-2 text-lg">
+                    {selectedCountryCode.flag}
+                  </span>
+                  <span>{selectedCountryCode.code}</span>
+                </span>
+                <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-500" />
               </button>
-            )}
+
+              {/* Country code dropdown with search */}
+              <AnimatePresence>
+                {showCountryCodes && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute z-10 w-72 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden flex flex-col"
+                  >
+                    <div className="p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
+                      <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                        <input
+                          ref={searchInputRef}
+                          type="text"
+                          value={searchCountry}
+                          onChange={(e) => setSearchCountry(e.target.value)}
+                          placeholder="Search country or code..."
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        {searchCountry && (
+                          <button
+                            onClick={() => setSearchCountry("")}
+                            className="absolute right-3 top-2.5"
+                          >
+                            <XMarkIcon className="h-5 w-5 text-gray-400" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="overflow-y-auto max-h-60">
+                      {filteredCountryCodes.length === 0 ? (
+                        <div className="p-4 text-gray-500 text-center">
+                          No countries found
+                        </div>
+                      ) : (
+                        filteredCountryCodes.map((country) => (
+                          <button
+                            key={`${country.code}-${country.name}`}
+                            type="button"
+                            className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-100"
+                            onClick={() => {
+                              setSelectedCountryCode(country);
+                              setShowCountryCodes(false);
+                              setSearchCountry("");
+                            }}
+                          >
+                            <span className="mr-2 text-lg">{country.flag}</span>
+                            <span className="font-medium">{country.code}</span>
+                            <span className="ml-2 text-sm text-gray-600">
+                              {country.name}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Phone number input */}
+            <div className="relative flex-grow">
+              <input
+                type="tel"
+                value={formatPhoneNumberForDisplay(phoneNumber)}
+                onChange={(e) => {
+                  // Filter non-numeric characters except for + at the beginning
+                  const value = e.target.value;
+                  const cleaned = value
+                    .replace(/[^\d\s+()-]/g, "")
+                    .replace(/\s+/g, " ");
+                  setPhoneNumber(cleaned);
+                }}
+                placeholder="Enter phone number"
+                className="w-full h-full px-4 py-2 border border-gray-300 border-l-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                disabled={localCallState.isConnected}
+              />
+              {phoneNumber && (
+                <button
+                  onClick={handleDelete}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  disabled={localCallState.isConnected}
+                >
+                  <BackspaceIcon className="h-5 w-5" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Credit Info for the call */}
-      {fullPhoneNumber && (
-        <div className="mb-4">
-          <CallCreditInfo
+        {/* Credit Info for the call - Only show for authenticated users, not trial users */}
+        {fullPhoneNumber && !isTrialMode && (
+          <div className="mb-4">
+            <CallCreditInfo
+              phoneNumber={fullPhoneNumber}
+              onCreditCheck={(hasEnough) => setHasEnoughCredits(hasEnough)}
+            />
+          </div>
+        )}
+
+        {/* Trial call info - Only show for trial users */}
+        {/* Removed the 60-second trial call limitation message
+        {isTrialMode && fullPhoneNumber && !localCallState.isConnected && (
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
+            <div className="flex items-center">
+              <ClockIcon className="h-5 w-5 text-blue-500 mr-2" />
+              <span className="text-sm text-blue-700">
+                Trial calls are limited to 60 seconds
+              </span>
+            </div>
+          </div>
+        )}
+        */}
+
+        {/* Error message */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
+            {error}
+            {insufficientCredits && !isTrialMode && (
+              <div className="mt-2">
+                <Link
+                  href="/credits"
+                  className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
+                >
+                  Add Credits
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Microphone permission status message */}
+        {micPermissionStatus === "denied" && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
+            <p className="font-bold">Microphone access is required</p>
+            <p className="text-sm">
+              Please allow microphone access in your browser settings to make
+              calls.
+            </p>
+          </div>
+        )}
+
+        {/* Add the Call Cost Timer component right before the keypad when on a call */}
+        {localCallState.isConnected && (
+          <CallCostTimer
+            isConnected={localCallState.isConnected}
+            startTime={callStartTime}
+            rate={callRate}
+            userId={user?.id}
             phoneNumber={fullPhoneNumber}
-            onCreditCheck={(hasEnough) => setHasEnoughCredits(hasEnough)}
+            callSid={callSid}
           />
-        </div>
-      )}
+        )}
 
-      {/* Error message */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
-          {error}
-          {insufficientCredits && (
-            <div className="mt-2">
-              <Link
-                href="/credits"
-                className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
+        {/* Dialer buttons */}
+        <div
+          className={`grid grid-cols-3 gap-2 mb-4 ${
+            localCallState.isConnected ? "opacity-50" : ""
+          }`}
+        >
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
+            <DialButton
+              key={num}
+              value={num.toString()}
+              onClick={() => handleNumberClick(num.toString())}
+              disabled={localCallState.isConnected}
+              className={num === 0 ? "dial-button-zero" : ""}
+            />
+          ))}
+        </div>
+
+        {/* Call/Hangup button */}
+        <div className="flex justify-center">
+          {!localCallState.isConnected ? (
+            <motion.button
+              onClick={handleCall}
+              disabled={
+                localCallState.isConnecting ||
+                (!isReady && !isTrialMode) || // Only check isReady for non-trial users
+                !phoneNumber
+              }
+              className={`flex items-center justify-center w-16 h-16 rounded-full ${
+                localCallState.isConnecting
+                  ? "bg-yellow-500"
+                  : phoneNumber && (isReady || isTrialMode) // Allow trial mode calls
+                  ? "bg-green-500 hover:bg-green-600"
+                  : "bg-gray-300"
+              } text-white transition-colors`}
+              whileTap={{ scale: 0.95 }}
+              whileHover={
+                phoneNumber && (isReady || isTrialMode) ? { scale: 1.05 } : {}
+              }
+            >
+              {localCallState.isConnecting ? (
+                <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full"></div>
+              ) : (
+                <PhoneIcon className="h-8 w-8" />
+              )}
+            </motion.button>
+          ) : (
+            <div className="flex flex-col items-center space-y-4">
+              <motion.button
+                onClick={handleHangUp}
+                className="flex items-center justify-center w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white"
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.05 }}
               >
-                Add Credits
-              </Link>
+                <PhoneIcon className="h-8 w-8 rotate-135" />
+              </motion.button>
+              <motion.button
+                onClick={handleMuteToggle}
+                className={`p-4 rounded-full ${
+                  localCallState.isMuted
+                    ? "bg-red-500 text-white"
+                    : "bg-gray-200 text-gray-700"
+                } hover:bg-opacity-90 transition-colors`}
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.05 }}
+                disabled={!twilioConnected}
+              >
+                {localCallState.isMuted ? (
+                  <SpeakerXMarkIcon className="h-6 w-6" />
+                ) : (
+                  <SpeakerWaveIcon className="h-6 w-6" />
+                )}
+                <span className="sr-only">
+                  {localCallState.isMuted ? "Unmute" : "Mute"}
+                </span>
+              </motion.button>
             </div>
           )}
         </div>
-      )}
 
-      {/* Microphone permission status message */}
-      {micPermissionStatus === "denied" && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-          <p className="font-bold">Microphone access is required</p>
-          <p className="text-sm">
-            Please allow microphone access in your browser settings to make
-            calls.
-          </p>
-        </div>
-      )}
-
-      {/* Add the Call Cost Timer component right before the keypad when on a call */}
-      {localCallState.isConnected && (
-        <CallCostTimer
-          isConnected={localCallState.isConnected}
-          startTime={callStartTime}
-          rate={callRate}
-          userId={user?.id}
-          phoneNumber={fullPhoneNumber}
-          callSid={callSid}
-        />
-      )}
-
-      {/* Dialer buttons */}
-      <div
-        className={`grid grid-cols-3 gap-2 mb-4 ${
-          localCallState.isConnected ? "opacity-50" : ""
-        }`}
-      >
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
-          <DialButton
-            key={num}
-            value={num.toString()}
-            onClick={() => handleNumberClick(num.toString())}
-            disabled={localCallState.isConnected}
-            className={num === 0 ? "dial-button-zero" : ""}
-          />
-        ))}
-      </div>
-
-      {/* Call/Hangup button */}
-      <div className="flex justify-center">
-        {!localCallState.isConnected ? (
-          <motion.button
-            onClick={handleCall}
-            disabled={localCallState.isConnecting || !isReady || !phoneNumber}
-            className={`flex items-center justify-center w-16 h-16 rounded-full ${
-              localCallState.isConnecting
-                ? "bg-yellow-500"
-                : phoneNumber && isReady
-                ? "bg-green-500 hover:bg-green-600"
-                : "bg-gray-300"
-            } text-white transition-colors`}
-            whileTap={{ scale: 0.95 }}
-            whileHover={phoneNumber && isReady ? { scale: 1.05 } : {}}
-          >
-            {localCallState.isConnecting ? (
-              <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full"></div>
-            ) : (
-              <PhoneIcon className="h-8 w-8" />
-            )}
-          </motion.button>
-        ) : (
-          <div className="flex flex-col items-center space-y-4">
-            <motion.button
-              onClick={handleHangUp}
-              className="flex items-center justify-center w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white"
-              whileTap={{ scale: 0.95 }}
-              whileHover={{ scale: 1.05 }}
-            >
-              <PhoneIcon className="h-8 w-8 rotate-135" />
-            </motion.button>
-            <motion.button
-              onClick={handleMuteToggle}
-              className={`p-4 rounded-full ${
-                localCallState.isMuted
-                  ? "bg-red-500 text-white"
-                  : "bg-gray-200 text-gray-700"
-              } hover:bg-opacity-90 transition-colors`}
-              whileTap={{ scale: 0.95 }}
-              whileHover={{ scale: 1.05 }}
-            >
-              {localCallState.isMuted ? (
-                <SpeakerXMarkIcon className="h-6 w-6" />
-              ) : (
-                <SpeakerWaveIcon className="h-6 w-6" />
-              )}
-              <span className="sr-only">
-                {localCallState.isMuted ? "Unmute" : "Mute"}
-              </span>
-            </motion.button>
+        {/* Call Info component for in-call UI */}
+        {localCallState.isConnected && (
+          <div className="mt-4">
+            <CallInfo />
           </div>
         )}
       </div>
 
-      {/* Call Info component for in-call UI */}
-      {localCallState.isConnected && (
-        <div className="mt-4">
-          <CallInfo />
+      {/* Add trial conversion modal */}
+      <TrialConversionModal />
+
+      {/* Existing auth modal */}
+      {showAuth && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowAuth(false)}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <Auth onSuccess={() => setShowAuth(false)} />
+          </div>
         </div>
       )}
     </div>
