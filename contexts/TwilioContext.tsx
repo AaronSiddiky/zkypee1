@@ -1941,6 +1941,16 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
 
       // Use the same device initialization pattern as regular calls
       return await suppressTwilioTokenLogs(async () => {
+        // Check if token exists before creating a device
+        if (!tokenResponse.token) {
+          console.error(
+            "[TRIAL FLOW] initializeTrialMode - No token available, cannot create device"
+          );
+          setError("Failed to obtain Twilio token for trial");
+          setStatus(CallStatus.ERROR);
+          return false;
+        }
+
         // Create new device
         const newDevice = new Device(tokenResponse.token, {
           logLevel: "debug",
