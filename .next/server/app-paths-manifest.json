@@ -1,7 +1,6 @@
 {
   "/dial/page": "app/dial/page.js",
-  "/page": "app/page.js",
-  "/credits/page": "app/credits/page.js",
   "/api/trial/get-usage/route": "app/api/trial/get-usage/route.js",
-  "/about/page": "app/about/page.js"
+  "/page": "app/page.js",
+  "/api/twilio/trial-token/route": "app/api/twilio/trial-token/route.js"
 }
