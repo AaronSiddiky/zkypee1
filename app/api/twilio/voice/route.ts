@@ -47,6 +47,19 @@ export async function POST(request: Request) {
     const host = request.headers.get("host") || "localhost:3000";
     const protocol = host.includes("localhost") ? "http" : "https";
 
+    // Final safety check to never use [object Object] as callerId
+    if (
+      !outgoingNumber ||
+      outgoingNumber === "[object Object]" ||
+      outgoingNumber.toString() === "[object Object]"
+    ) {
+      console.warn(
+        "[Voice TwiML] Invalid outgoingNumber detected, using default instead:",
+        outgoingNumber
+      );
+      outgoingNumber = DEFAULT_TWILIO_PHONE_NUMBER;
+    }
+
     const twiml = new VoiceResponse();
 
     // If the request is from a browser client

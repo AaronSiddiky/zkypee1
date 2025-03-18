@@ -9,6 +9,19 @@ import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number";
 function generateTwiML(phoneNumber: string, outgoingNumber?: string) {
   const twiml = new twilio.twiml.VoiceResponse();
 
+  // Safety check to prevent invalid callerId
+  if (
+    !outgoingNumber ||
+    outgoingNumber === "[object Object]" ||
+    outgoingNumber?.toString() === "[object Object]"
+  ) {
+    console.warn(
+      "[TwiML] Invalid outgoingNumber detected, using default instead:",
+      outgoingNumber
+    );
+    outgoingNumber = DEFAULT_TWILIO_PHONE_NUMBER;
+  }
+
   // Connect to phone number with proper configuration for two-way audio
   const dial = twiml.dial({
     callerId: outgoingNumber || DEFAULT_TWILIO_PHONE_NUMBER,

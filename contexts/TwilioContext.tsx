@@ -256,7 +256,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   const [isTrialMode, setIsTrialMode] = useState(false);
   const [trialCallsRemaining, setTrialCallsRemaining] = useState(0);
   const [trialTimeRemaining, setTrialTimeRemaining] = useState(60); // 60 seconds
-  const [showTrialConversionModal, setShowTrialConversionModal] =
+  const [showTrialConversionModalState, setShowTrialConversionModalState] =
     useState(false);
   const trialTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -505,7 +505,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
             hangUp();
             // Only show conversion modal if user is not logged in
             if (!user) {
-              setShowTrialConversionModal(true);
+              setShowTrialConversionModalState(true);
             }
           }
         }
@@ -518,7 +518,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           hangUp();
           // Only show conversion modal if user is not logged in
           if (!user) {
-            setShowTrialConversionModal(true);
+            setShowTrialConversionModalState(true);
           }
         }
       }, 61000); // 61 seconds as a safety margin
@@ -638,7 +638,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           console.log(
             "[TRIAL FLOW] stopTrialCallTracking - No calls remaining, showing conversion modal"
           );
-          setShowTrialConversionModal(true);
+          setShowTrialConversionModalState(true);
         }
       } catch (error) {
         console.error(
@@ -1295,7 +1295,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
               "[TRIAL FLOW] makeCall - No calls remaining, showing conversion modal"
             );
             setError("Trial calls limit reached. Please sign up to continue.");
-            setShowTrialConversionModal(true);
+            setShowTrialConversionModalState(true);
             return false;
           }
         } else {
@@ -1320,7 +1320,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
               "[TRIAL FLOW] makeCall - No calls remaining after initialization"
             );
             setError("Trial calls limit reached. Please sign up to continue.");
-            setShowTrialConversionModal(true);
+            setShowTrialConversionModalState(true);
             return false;
           }
         }
@@ -1355,12 +1355,32 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           throw new Error("Device not initialized");
         }
 
+        // Validate the outgoing number to ensure it's a proper string phone number
+        let validatedOutgoingNumber: string | null = null;
+        if (selectedOutgoingNumber) {
+          // Convert to string and check if it's a valid format
+          const numberStr = selectedOutgoingNumber.toString();
+          if (
+            numberStr !== "[object Object]" &&
+            /^\+?[1-9]\d{1,14}$/.test(numberStr)
+          ) {
+            validatedOutgoingNumber = numberStr;
+            console.log(
+              `Using validated outgoing number: ${validatedOutgoingNumber}`
+            );
+          } else {
+            console.warn(
+              `Invalid outgoing number format: ${numberStr}, not using it`
+            );
+          }
+        }
+
         const call = await device.connect({
           params: {
             To: phoneNumber,
-            // Pass the custom outgoing number if available, ensuring it's a string
-            ...(selectedOutgoingNumber
-              ? { OutgoingNumber: selectedOutgoingNumber.toString() }
+            // Pass the custom outgoing number if available and validated
+            ...(validatedOutgoingNumber
+              ? { OutgoingNumber: validatedOutgoingNumber }
               : {}),
           },
         });
@@ -1489,7 +1509,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
 
             // Show conversion modal after trial call ends only if user is not logged in
             if (!user) {
-              setShowTrialConversionModal(true);
+              setShowTrialConversionModalState(true);
             }
           } else {
             stopCallTracking();
@@ -1965,7 +1985,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
             console.log(
               "[TRIAL FLOW] initializeTrialMode - No calls remaining, showing conversion modal"
             );
-            setShowTrialConversionModal(true);
+            setShowTrialConversionModalState(true);
           }
         } catch (error) {
           console.error(
@@ -2104,7 +2124,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           console.log(
             "[TRIAL FLOW] checkTrialStatus - No calls remaining, showing conversion modal"
           );
-          setShowTrialConversionModal(true);
+          setShowTrialConversionModalState(true);
         }
       } catch (error) {
         console.error("[TRIAL FLOW] checkTrialStatus - Error:", error);
@@ -2117,7 +2137,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     isTrialMode,
     trialCallsRemaining,
     setTrialCallsRemaining,
-    setShowTrialConversionModal,
+    setShowTrialConversionModalState,
     user,
   ]);
 
@@ -2141,7 +2161,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       // Reset trial mode
       setIsTrialMode(false);
       setTrialCallsRemaining(0);
-      setShowTrialConversionModal(false);
+      setShowTrialConversionModalState(false);
 
       // Clear trial data from localStorage
       if (typeof window !== "undefined") {
@@ -2203,6 +2223,21 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Create a wrapped version of setShowTrialConversionModal that checks user status
+  const setShowTrialConversionModal = useCallback(
+    (show: boolean) => {
+      // If trying to show the modal, only do it if user is not logged in
+      if (show && user) {
+        console.log("[TRIAL FLOW] Preventing trial modal for logged-in user");
+        return; // Do nothing if user is logged in and we're trying to show the modal
+      }
+
+      // Otherwise, set the state as requested
+      setShowTrialConversionModalState(show);
+    },
+    [user]
+  );
+
   const value: TwilioContextType = {
     status,
     isReady,
@@ -2240,7 +2275,7 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     setTrialCallsRemaining,
     trialTimeRemaining,
     initializeTrialMode,
-    showTrialConversionModal,
+    showTrialConversionModal: showTrialConversionModalState,
     setShowTrialConversionModal,
     // Add the new sendDTMF function to the context
     sendDTMF,
