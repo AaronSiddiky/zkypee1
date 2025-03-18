@@ -133,3 +133,138 @@ export async function verifyPayment(paymentIntentId: string) {
     );
   }
 }
+
+// Create a Stripe Checkout session for phone number purchase
+export async function createPhoneNumberCheckoutSession(
+  phoneNumber: string,
+  friendlyName: string,
+  price: number,
+  userId: string,
+  successUrl: string,
+  cancelUrl: string
+) {
+  const stripe = getStripe();
+
+  if (!stripe) {
+    throw new Error("Stripe can only be accessed on the server side");
+  }
+
+  try {
+    console.log(
+      `Creating subscription checkout session for phone number ${phoneNumber} for user ${userId}`
+    );
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "usd",
+            product_data: {
+              name: "Phone Number Subscription",
+              description: `Monthly subscription for phone number: ${phoneNumber}`,
+            },
+            unit_amount: price * 100, // Amount in cents
+            recurring: {
+              interval: "month",
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      metadata: {
+        userId,
+        phoneNumber,
+        friendlyName,
+        type: "phone_number_subscription",
+      },
+    });
+
+    console.log(
+      `Phone number subscription checkout session created with ID: ${session.id}`
+    );
+    console.log(`Session metadata:`, session.metadata);
+
+    return session;
+  } catch (error) {
+    console.error(
+      "Error creating phone number subscription checkout session:",
+      error
+    );
+    throw new Error(
+      `Failed to create subscription checkout session: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+// Function to add a subscription ID to a user's stripe_subscription_ids
+export async function addSubscriptionIdToUser(
+  userId: string,
+  subscriptionId: string
+) {
+  if (typeof window !== "undefined") {
+    console.warn(
+      "Attempted to update user subscription data on the client side"
+    );
+    return false;
+  }
+
+  try {
+    // Import here to avoid circular dependencies
+    const { supabaseAdmin, requireAdmin } = await import("./supabase");
+
+    // Get admin client safely
+    const admin = requireAdmin();
+
+    // Get current subscription IDs
+    const { data: userData, error: fetchError } = await admin
+      .from("users")
+      .select("stripe_subscription_ids")
+      .eq("id", userId)
+      .single();
+
+    if (fetchError) {
+      console.error(`Error fetching user subscription data:`, fetchError);
+      return false;
+    }
+
+    // Get current subscription IDs or initialize empty array
+    const currentSubscriptionIds = userData?.stripe_subscription_ids || [];
+
+    // Don't add duplicate subscription IDs
+    if (!currentSubscriptionIds.includes(subscriptionId)) {
+      const updatedSubscriptionIds = [
+        ...currentSubscriptionIds,
+        subscriptionId,
+      ];
+
+      // Update the user record
+      const { error: updateError } = await admin
+        .from("users")
+        .update({
+          stripe_subscription_ids: updatedSubscriptionIds,
+        })
+        .eq("id", userId);
+
+      if (updateError) {
+        console.error(`Error updating user subscription data:`, updateError);
+        return false;
+      }
+
+      console.log(`Added subscription ID ${subscriptionId} to user ${userId}`);
+      return true;
+    } else {
+      console.log(
+        `Subscription ID ${subscriptionId} already exists for user ${userId}`
+      );
+      return true;
+    }
+  } catch (error) {
+    console.error(`Failed to add subscription ID to user:`, error);
+    return false;
+  }
+}

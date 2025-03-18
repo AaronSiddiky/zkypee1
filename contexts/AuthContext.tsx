@@ -7,10 +7,11 @@ import React, {
   useState,
   useRef,
 } from "react";
-import { supabase } from "../lib/supabase";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Session, User } from "@supabase/supabase-js";
 import { trackSignup, trackTrialConversion } from "@/lib/analytics";
 import { linkTrialToUser } from "@/lib/trial-limitations";
+import { Database } from "@/lib/database.types";
 
 type AuthContextType = {
   session: Session | null;
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  const supabase = createClientComponentClient<Database>();
 
   // Reset the activity timer and schedule the next check
   const resetActivityTimer = () => {

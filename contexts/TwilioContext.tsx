@@ -1246,6 +1246,16 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
     try {
       resetError();
 
+      // Get the selected outgoing number from localStorage if available
+      const selectedOutgoingNumber =
+        typeof window !== "undefined"
+          ? localStorage.getItem("selectedOutgoingNumber")
+          : null;
+
+      if (selectedOutgoingNumber) {
+        console.log(`Using custom outgoing number: ${selectedOutgoingNumber}`);
+      }
+
       if (isTrialMode) {
         // Get current trial fingerprint and IP address from localStorage
         const fingerprint = localStorage.getItem("zkypee_trial_fingerprint");
@@ -1346,7 +1356,13 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         }
 
         const call = await device.connect({
-          params: { To: phoneNumber },
+          params: {
+            To: phoneNumber,
+            // Pass the custom outgoing number if available, but only if it exists
+            ...(selectedOutgoingNumber
+              ? { OutgoingNumber: selectedOutgoingNumber }
+              : {}),
+          },
         });
 
         // Store call reference in both state variables

@@ -3,14 +3,15 @@ import twilio from "twilio";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { corsHeaders } from "@/lib/cors";
+import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number";
 
 // Create TwiML response for connecting directly to a phone number
-function generateTwiML(phoneNumber: string) {
+function generateTwiML(phoneNumber: string, outgoingNumber?: string) {
   const twiml = new twilio.twiml.VoiceResponse();
 
   // Connect to phone number with proper configuration for two-way audio
   const dial = twiml.dial({
-    callerId: process.env.TWILIO_PHONE_NUMBER,
+    callerId: outgoingNumber || DEFAULT_TWILIO_PHONE_NUMBER,
     timeLimit: 3600, // 1 hour max call time
     timeout: 30, // 30 seconds to answer
     answerOnBridge: true, // This enables two-way audio
@@ -44,18 +45,34 @@ export async function POST(request: NextRequest) {
     // Try both URL parameters and form data
     const url = new URL(request.url);
     let to = url.searchParams.get("To");
+    let outgoingNumber = url.searchParams.get("OutgoingNumber");
 
     // If not in URL, try to get from form data
-    if (!to) {
+    if (!to || !outgoingNumber) {
       try {
         const formData = await request.formData();
-        to = formData.get("To") as string;
+        to = to || (formData.get("To") as string);
+        outgoingNumber =
+          outgoingNumber || (formData.get("OutgoingNumber") as string);
+
         console.log("[TwiML] Got 'To' from form data:", to);
+        if (outgoingNumber) {
+          console.log(
+            "[TwiML] Got 'OutgoingNumber' from form data:",
+            outgoingNumber
+          );
+        }
       } catch (error) {
         console.log("[TwiML] Error parsing form data:", error);
       }
     } else {
       console.log("[TwiML] Got 'To' from URL params:", to);
+      if (outgoingNumber) {
+        console.log(
+          "[TwiML] Got 'OutgoingNumber' from URL params:",
+          outgoingNumber
+        );
+      }
     }
 
     if (!to) {
@@ -71,8 +88,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate TwiML to connect the call
-    const twiml = generateTwiML(to);
+    const twiml = generateTwiML(to, outgoingNumber || undefined);
     console.log("[TwiML] Returning TwiML to connect to:", to);
+    if (outgoingNumber) {
+      console.log("[TwiML] Using custom outgoing number:", outgoingNumber);
+    }
 
     // Return TwiML
     return new NextResponse(twiml, {

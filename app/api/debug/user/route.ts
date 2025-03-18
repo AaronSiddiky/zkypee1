@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { corsHeaders } from "@/lib/cors";
+import { getUserPhoneNumbers } from "@/lib/phoneNumbers";
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +41,9 @@ export async function GET(request: NextRequest) {
       console.error("Error fetching public user:", publicError);
     }
 
+    // Get user's phone numbers using our utility function
+    const phoneNumbers = await getUserPhoneNumbers(userId);
+
     // Get transactions
     const { data: transactions, error: transactionError } = await supabase
       .from("transactions")
@@ -73,6 +77,7 @@ export async function GET(request: NextRequest) {
       {
         auth_user: authUser,
         public_user: publicUser,
+        phone_numbers: phoneNumbers,
         transactions: transactions || [],
         call_logs: callLogs || [],
       },

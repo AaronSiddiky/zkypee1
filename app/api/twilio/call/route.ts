@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import twilio from "twilio";
 import { corsHeaders } from "@/lib/cors";
+import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number";
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -15,8 +16,11 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     // Get the phone number from the request
-    const { phoneNumber } = await request.json();
+    const { phoneNumber, outgoingNumber } = await request.json();
     console.log("[API:call] Making call to:", phoneNumber);
+    if (outgoingNumber) {
+      console.log("[API:call] Using custom outgoing number:", outgoingNumber);
+    }
 
     if (!phoneNumber) {
       return NextResponse.json(
@@ -28,7 +32,9 @@ export async function POST(request: NextRequest) {
     // Check if Twilio credentials are set
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+
+    // Use the provided outgoing number or fall back to default
+    const twilioNumber = outgoingNumber || DEFAULT_TWILIO_PHONE_NUMBER;
 
     if (!accountSid || !authToken || !twilioNumber) {
       console.error("[API:call] Missing Twilio credentials");

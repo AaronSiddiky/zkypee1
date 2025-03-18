@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import twilio from "twilio";
 import { corsHeaders, handleCors } from "@/lib/cors";
+import { TWILIO_PHONE_NUMBER } from "../phone-number";
 
 // Handle OPTIONS requests for CORS preflight
 export async function OPTIONS(request: NextRequest) {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Check if Twilio credentials are set
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
+    const twilioNumber = TWILIO_PHONE_NUMBER;
 
     console.log(`[API:test-call] Checking Twilio credentials:`, {
       accountSid: accountSid ? `${accountSid.substring(0, 4)}...` : "missing",

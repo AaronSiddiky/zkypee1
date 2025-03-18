@@ -64,8 +64,8 @@ export default function BuyNumberPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-blue-500">
-        Buy a Phone Number (Coming soon👇)
+      <h1 className="text-3xl font-bold mb-2 text-blue-500">
+        Buy a Phone Number
       </h1>
 
       {loading && (

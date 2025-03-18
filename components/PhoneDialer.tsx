@@ -1571,7 +1571,13 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
           <h2 className="text-xl font-semibold text-gray-800">Phone Dialer</h2>
           {twilioNumber && (
             <p className="text-sm text-gray-600">
-              Calling from: <span className="font-medium">{twilioNumber}</span>
+              Calling from:{" "}
+              <span className="font-medium">
+                {typeof window !== "undefined" &&
+                localStorage.getItem("selectedOutgoingNumber")
+                  ? localStorage.getItem("selectedOutgoingNumber")
+                  : twilioNumber}
+              </span>
             </p>
           )}
         </div>

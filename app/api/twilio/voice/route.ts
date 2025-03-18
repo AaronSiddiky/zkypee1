@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import twilio from "twilio";
 import { corsHeaders } from "@/lib/cors";
+import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number";
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
@@ -10,6 +11,16 @@ export async function POST(request: Request) {
     const data = await request.formData();
     const toValue = data.get("To");
     const to = toValue?.toString() || "";
+
+    // Extract OutgoingNumber from formData if available
+    const outgoingNumberValue = data.get("OutgoingNumber");
+    const outgoingNumber =
+      outgoingNumberValue?.toString() || DEFAULT_TWILIO_PHONE_NUMBER;
+
+    // Log the received parameters for debugging
+    console.log("[Voice TwiML] To:", to);
+    console.log("[Voice TwiML] OutgoingNumber:", outgoingNumber);
+
     const host = request.headers.get("host") || "localhost:3000";
     const protocol = host.includes("localhost") ? "http" : "https";
 
@@ -19,7 +30,7 @@ export async function POST(request: Request) {
     if (to) {
       // Create a <Dial> verb to connect to the phone number
       const dial = twiml.dial({
-        callerId: process.env.TWILIO_PHONE_NUMBER,
+        callerId: outgoingNumber, // Use the extracted outgoing number instead of hardcoded value
         answerOnBridge: true,
         record: "record-from-answer",
         timeout: 30,
