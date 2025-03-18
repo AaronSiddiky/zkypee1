@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import twilio from "twilio";
-import { TWILIO_PHONE_NUMBER } from "../phone-number";
+import {
+  DEFAULT_TWILIO_PHONE_NUMBER,
+  getTwilioPhoneNumber,
+} from "../phone-number";
 
 // Initialize Twilio client using your existing credentials
 const twilioClient = twilio(
@@ -10,11 +13,12 @@ const twilioClient = twilio(
 
 export async function GET() {
   try {
-    // First check if we have a phone number in the phone-number.ts file
-    if (TWILIO_PHONE_NUMBER) {
+    // First check if we have a phone number from the configuration
+    const configuredPhoneNumber = getTwilioPhoneNumber();
+    if (configuredPhoneNumber) {
       return NextResponse.json({
         success: true,
-        phoneNumber: TWILIO_PHONE_NUMBER,
+        phoneNumber: configuredPhoneNumber,
         source: "config",
       });
     }
