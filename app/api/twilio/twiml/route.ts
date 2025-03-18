@@ -52,8 +52,30 @@ export async function POST(request: NextRequest) {
       try {
         const formData = await request.formData();
         to = to || (formData.get("To") as string);
-        outgoingNumber =
-          outgoingNumber || (formData.get("OutgoingNumber") as string);
+        const outgoingNumberValue = formData.get("OutgoingNumber");
+
+        if (outgoingNumberValue) {
+          if (typeof outgoingNumberValue === "object") {
+            try {
+              // Try to convert object to string representation
+              const objString = JSON.stringify(outgoingNumberValue);
+              console.log("[TwiML] OutgoingNumber was object:", objString);
+              // Extract phone number from object if it has a phoneNumber property
+              const parsed = JSON.parse(objString);
+              if (parsed && parsed.phoneNumber) {
+                outgoingNumber = parsed.phoneNumber;
+              }
+            } catch (err) {
+              console.error(
+                "[TwiML] Failed to parse OutgoingNumber object:",
+                err
+              );
+            }
+          } else {
+            // Use the string value directly
+            outgoingNumber = outgoingNumberValue.toString();
+          }
+        }
 
         console.log("[TwiML] Got 'To' from form data:", to);
         if (outgoingNumber) {

@@ -1358,9 +1358,9 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
         const call = await device.connect({
           params: {
             To: phoneNumber,
-            // Pass the custom outgoing number if available, but only if it exists
+            // Pass the custom outgoing number if available, ensuring it's a string
             ...(selectedOutgoingNumber
-              ? { OutgoingNumber: selectedOutgoingNumber }
+              ? { OutgoingNumber: selectedOutgoingNumber.toString() }
               : {}),
           },
         });

@@ -14,8 +14,31 @@ export async function POST(request: Request) {
 
     // Extract OutgoingNumber from formData if available
     const outgoingNumberValue = data.get("OutgoingNumber");
-    const outgoingNumber =
-      outgoingNumberValue?.toString() || DEFAULT_TWILIO_PHONE_NUMBER;
+
+    // Handle the case when outgoingNumberValue is an object
+    let outgoingNumber = DEFAULT_TWILIO_PHONE_NUMBER;
+    if (outgoingNumberValue) {
+      if (typeof outgoingNumberValue === "object") {
+        try {
+          // Try to convert object to string representation
+          const objString = JSON.stringify(outgoingNumberValue);
+          console.log("[Voice TwiML] OutgoingNumber was object:", objString);
+          // Extract phone number from object if it has a phoneNumber property
+          const parsed = JSON.parse(objString);
+          if (parsed && parsed.phoneNumber) {
+            outgoingNumber = parsed.phoneNumber;
+          }
+        } catch (err) {
+          console.error(
+            "[Voice TwiML] Failed to parse OutgoingNumber object:",
+            err
+          );
+        }
+      } else {
+        // Use the string value directly
+        outgoingNumber = outgoingNumberValue.toString();
+      }
+    }
 
     // Log the received parameters for debugging
     console.log("[Voice TwiML] To:", to);
