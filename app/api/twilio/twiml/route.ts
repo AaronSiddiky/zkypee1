@@ -3,7 +3,7 @@ import twilio from "twilio";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { corsHeaders } from "@/lib/cors";
-import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number";
+import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number-constants";
 
 // Create TwiML response for connecting directly to a phone number
 function generateTwiML(phoneNumber: string, outgoingNumber?: string) {

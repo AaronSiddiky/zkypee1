@@ -3,8 +3,11 @@
 // Client-side accessible phone number configuration
 // This makes it easy to modify the phone number without changing environment variables
 
-// Default phone number to use for Twilio calls
-export const DEFAULT_TWILIO_PHONE_NUMBER = "+13158722206";
+// Import the constant from server-compatible file
+import { DEFAULT_TWILIO_PHONE_NUMBER } from "./phone-number-constants";
+
+// Re-export for backward compatibility
+export { DEFAULT_TWILIO_PHONE_NUMBER };
 
 // Get the active phone number (from localStorage if available)
 export function getTwilioPhoneNumber(): string {

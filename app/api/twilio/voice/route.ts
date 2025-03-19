@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import twilio from "twilio";
 import { corsHeaders } from "@/lib/cors";
-import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number";
+import { DEFAULT_TWILIO_PHONE_NUMBER } from "../phone-number-constants";
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
