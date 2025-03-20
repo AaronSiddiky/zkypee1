@@ -13,8 +13,14 @@ export default function ResetPasswordConfirm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [hashChecked, setHashChecked] = useState(false);
-  const [tokenValue, setTokenValue] = useState("");
+  const [debug, setDebug] = useState<string[]>([]);
   const router = useRouter();
+
+  // Add a debug logging function
+  const addDebug = (message: string) => {
+    setDebug((prev) => [...prev, message]);
+    console.log(message);
+  };
 
   // Validate that we have a hash parameter for reset
   useEffect(() => {
@@ -26,28 +32,55 @@ export default function ResetPasswordConfirm() {
         const hash = window.location.hash;
         const type = new URLSearchParams(window.location.search).get("type");
 
-        console.log("Hash present:", !!hash);
-        console.log("URL type:", type);
-        console.log("Full window location:", window.location.href);
+        addDebug(`Hash present: ${!!hash}`);
+        addDebug(`URL type: ${type}`);
+        addDebug(`Full window location: ${window.location.href}`);
+
+        // First try to get the session directly from supabase
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (session) {
+          addDebug("Active session found, user is authenticated");
+          setHashChecked(true);
+          return;
+        }
 
         if (hash && hash.includes("access_token=")) {
-          console.log("Found access token in URL");
-          setHashChecked(true);
+          addDebug("Found access token in URL");
 
-          // Extract the token for debugging only (don't store it as state normally)
-          const accessToken = hash.split("access_token=")[1]?.split("&")[0];
-          if (accessToken) {
-            setTokenValue("Valid token found (not displayed for security)");
+          try {
+            // Try to set the auth session from the URL hash
+            // This should handle the access_token for us
+            const { error } = await supabase.auth.setSession({
+              access_token: hash.split("access_token=")[1]?.split("&")[0] || "",
+              refresh_token:
+                hash.split("refresh_token=")[1]?.split("&")[0] || "",
+            });
+
+            if (error) {
+              addDebug(`Error setting session from URL: ${error.message}`);
+              setError(error.message);
+            } else {
+              addDebug("Successfully set session from URL hash");
+              setHashChecked(true);
+            }
+          } catch (err: any) {
+            addDebug(`Error in setSession: ${err.message}`);
+            setError(err.message || "Error processing authentication token");
           }
         } else if (type === "recovery") {
-          console.log("Recovery type parameter found");
+          addDebug("Recovery type parameter found but no hash with token");
+          // If we have the recovery type but no hash, still allow them to try
+          // This might happen if they navigated here directly
           setHashChecked(true);
         } else {
           // If no hash or not a recovery type, show error
-          setError(
-            "Invalid or expired password reset link. No access token found in URL."
-          );
-          console.error("No access token found in URL hash");
+          const errorMsg =
+            "Invalid or expired password reset link. No access token found in URL.";
+          addDebug(errorMsg);
+          setError(errorMsg);
         }
       }
     };
@@ -73,6 +106,19 @@ export default function ResetPasswordConfirm() {
     setLoading(true);
 
     try {
+      // Get current session to verify we're authenticated
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error(
+          "No active session. Please request a new password reset link."
+        );
+      }
+
+      addDebug("Session found, updating password");
+
       // Update the user's password
       const { error } = await supabase.auth.updateUser({
         password,
@@ -80,13 +126,18 @@ export default function ResetPasswordConfirm() {
 
       if (error) throw error;
 
+      addDebug("Password updated successfully");
       setSuccess(true);
+
+      // Sign out after a successful password reset to enforce a fresh login with the new password
+      await supabase.auth.signOut();
+
       setTimeout(() => {
         // Redirect to home page after successful password reset
         router.push("/");
       }, 3000);
     } catch (err: any) {
-      console.error("Error resetting password:", err);
+      addDebug(`Error resetting password: ${err.message}`);
       setError(err.message || "Failed to reset password");
     } finally {
       setLoading(false);
@@ -128,20 +179,30 @@ export default function ResetPasswordConfirm() {
             <p className="mb-6 text-gray-600 text-center">
               {error || "Invalid or expired password reset link."}
             </p>
-            {tokenValue && (
-              <p className="mb-6 text-gray-600 text-center text-xs">
-                Debug info: {tokenValue}
-              </p>
+
+            {/* Display debug info if there are debug messages */}
+            {debug.length > 0 && (
+              <div className="mt-4 p-3 bg-gray-100 rounded-md text-xs text-gray-600 max-h-32 overflow-y-auto">
+                <p className="font-bold mb-1">Debug info:</p>
+                {debug.map((msg, i) => (
+                  <div key={i} className="mb-1">
+                    {msg}
+                  </div>
+                ))}
+              </div>
             )}
-            <Link href="/auth/reset-password">
-              <motion.button
-                className="w-full py-2.5 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium shadow-md"
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-              >
-                Try Again
-              </motion.button>
-            </Link>
+
+            <div className="mt-6">
+              <Link href="/auth/reset-password">
+                <motion.button
+                  className="w-full py-2.5 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium shadow-md"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                >
+                  Try Again
+                </motion.button>
+              </Link>
+            </div>
           </>
         ) : (
           <>
@@ -212,6 +273,18 @@ export default function ResetPasswordConfirm() {
                 {loading ? "Processing..." : "Reset Password"}
               </motion.button>
             </form>
+
+            {/* Display debug info if there are debug messages */}
+            {debug.length > 0 && (
+              <div className="mt-4 p-3 bg-gray-100 rounded-md text-xs text-gray-600 max-h-32 overflow-y-auto">
+                <p className="font-bold mb-1">Debug info:</p>
+                {debug.map((msg, i) => (
+                  <div key={i} className="mb-1">
+                    {msg}
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </motion.div>
