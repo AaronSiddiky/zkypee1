@@ -20,6 +20,7 @@ type AuthContextType = {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<any>;
   signUp: (email: string, password: string) => Promise<any>;
+  resetPassword: (email: string) => Promise<any>;
 };
 
 // Fixed session timeout in minutes (not configurable by users)
@@ -200,6 +201,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Add reset password function
+  const resetPassword = async (email: string): Promise<any> => {
+    try {
+      // Get base URL for redirect
+      const baseUrl = getBaseUrl();
+
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${baseUrl}/auth/reset-password/confirm`,
+      });
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      throw error;
+    }
+  };
+
   const signOut = async () => {
     // Clear any existing timeout
     if (activityTimerRef.current) {
@@ -217,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signIn,
     signUp,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

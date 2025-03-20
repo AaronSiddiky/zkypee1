@@ -215,6 +215,16 @@ export default function Auth({ onSuccess }: AuthProps) {
             }
             required
           />
+          {!isSignUp && (
+            <div className="text-right mt-1">
+              <a
+                href="/auth/reset-password"
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                Forgot password?
+              </a>
+            </div>
+          )}
         </div>
 
         {/* reCAPTCHA */}

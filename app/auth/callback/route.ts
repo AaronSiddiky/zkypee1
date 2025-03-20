@@ -5,9 +5,11 @@ import { cookies } from "next/headers";
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
+  const type = requestUrl.searchParams.get("type"); // Get the type parameter
 
   console.log("Auth callback called with URL:", request.url);
   console.log("Origin detected as:", requestUrl.origin);
+  console.log("Auth operation type:", type);
 
   // Determine the correct redirect URL
   // If NEXT_PUBLIC_BASE_URL is set, use that instead of the request origin
@@ -23,7 +25,14 @@ export async function GET(request: Request) {
     console.log("No code parameter found in callback URL");
   }
 
-  // URL to redirect to after sign in process completes
-  // Using the environment variable if available
-  return NextResponse.redirect(baseUrl);
+  // Determine the appropriate redirect based on the operation type
+  if (type === "recovery") {
+    // If this is a password recovery operation, redirect to the reset password confirmation page
+    return NextResponse.redirect(
+      `${baseUrl}/auth/reset-password/confirm${requestUrl.hash}`
+    );
+  } else {
+    // For other auth operations (sign-in, sign-up), redirect to home
+    return NextResponse.redirect(baseUrl);
+  }
 }
