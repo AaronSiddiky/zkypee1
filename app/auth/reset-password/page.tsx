@@ -26,11 +26,24 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
+      console.log("Sending password reset email to:", email);
+
+      // Call the resetPassword function from AuthContext
       await resetPassword(email);
+
+      console.log("Password reset email sent successfully");
       setIsSubmitted(true);
     } catch (err: any) {
       console.error("Password reset error:", err);
       setError(err.message || "An error occurred during password reset");
+
+      // Log detailed error information for debugging
+      if (err.status) {
+        console.error(`Status code: ${err.status}`);
+      }
+      if (err.details) {
+        console.error("Error details:", err.details);
+      }
     } finally {
       setLoading(false);
     }

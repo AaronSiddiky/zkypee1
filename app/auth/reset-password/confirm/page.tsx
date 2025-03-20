@@ -13,6 +13,7 @@ export default function ResetPasswordConfirm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [hashChecked, setHashChecked] = useState(false);
+  const [tokenValue, setTokenValue] = useState("");
   const router = useRouter();
 
   // Validate that we have a hash parameter for reset
@@ -25,11 +26,28 @@ export default function ResetPasswordConfirm() {
         const hash = window.location.hash;
         const type = new URLSearchParams(window.location.search).get("type");
 
-        if (!hash || type !== "recovery") {
-          // If no hash or not a recovery type, show error
-          setError("Invalid or expired password reset link");
-        } else {
+        console.log("Hash present:", !!hash);
+        console.log("URL type:", type);
+        console.log("Full window location:", window.location.href);
+
+        if (hash && hash.includes("access_token=")) {
+          console.log("Found access token in URL");
           setHashChecked(true);
+
+          // Extract the token for debugging only (don't store it as state normally)
+          const accessToken = hash.split("access_token=")[1]?.split("&")[0];
+          if (accessToken) {
+            setTokenValue("Valid token found (not displayed for security)");
+          }
+        } else if (type === "recovery") {
+          console.log("Recovery type parameter found");
+          setHashChecked(true);
+        } else {
+          // If no hash or not a recovery type, show error
+          setError(
+            "Invalid or expired password reset link. No access token found in URL."
+          );
+          console.error("No access token found in URL hash");
         }
       }
     };
@@ -110,6 +128,11 @@ export default function ResetPasswordConfirm() {
             <p className="mb-6 text-gray-600 text-center">
               {error || "Invalid or expired password reset link."}
             </p>
+            {tokenValue && (
+              <p className="mb-6 text-gray-600 text-center text-xs">
+                Debug info: {tokenValue}
+              </p>
+            )}
             <Link href="/auth/reset-password">
               <motion.button
                 className="w-full py-2.5 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 font-medium shadow-md"
