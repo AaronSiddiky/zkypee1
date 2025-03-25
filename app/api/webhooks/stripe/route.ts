@@ -49,6 +49,49 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
     .eq('id', userData.id);
 }
 
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+  const customerId = subscription.customer as string;
+  await supabase
+    .from('users')
+    .update({
+      subscription_status: subscription.status,
+    })
+    .eq('stripe_customer_id', customerId);
+}
+
+async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  const customerId = subscription.customer as string;
+  await supabase
+    .from('users')
+    .update({
+      subscription_status: 'canceled',
+      stripe_subscription_id: null
+    })
+    .eq('stripe_customer_id', customerId);
+}
+
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  if (typeof invoice.customer === 'string') {
+    await supabase
+      .from('users')
+      .update({
+        subscription_status: 'active'
+      })
+      .eq('stripe_customer_id', invoice.customer);
+  }
+}
+
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  if (typeof invoice.customer === 'string') {
+    await supabase
+      .from('users')
+      .update({
+        subscription_status: 'past_due'
+      })
+      .eq('stripe_customer_id', invoice.customer);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.text();
@@ -65,6 +108,18 @@ export async function POST(req: Request) {
     switch (event.type) {
       case 'customer.subscription.created':
         await handleSubscriptionCreated(event.data.object as Stripe.Subscription);
+        break;
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+        break;
+      case 'customer.subscription.deleted':
+        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        break;
+      case 'invoice.payment_succeeded':
+        await handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
+        break;
+      case 'invoice.payment_failed':
+        await handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
         break;
       case 'payment_intent.succeeded':
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
@@ -108,31 +163,13 @@ export async function POST(req: Request) {
             status: 'succeeded'
           });
         break;
-      // Add other webhook event handlers here as needed
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error('Error processing webhook:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
-}
-
-export async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  // Implementation of handleSubscriptionUpdated
-}
-
-export async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  // Implementation of handleSubscriptionDeleted
-}
-
-export async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  // Implementation of handleInvoicePaymentSucceeded
-}
-
-export async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  // Implementation of handleInvoicePaymentFailed
 }
