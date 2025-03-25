@@ -17,6 +17,8 @@ export interface Database {
           credit_balance: number;
           name: string | null;
           avatar_url: string | null;
+          referral_code: string;
+          total_referral_earnings: number;
         };
         Insert: {
           id: string;
@@ -25,6 +27,8 @@ export interface Database {
           credit_balance?: number;
           name?: string | null;
           avatar_url?: string | null;
+          referral_code?: string;
+          total_referral_earnings?: number;
         };
         Update: {
           id?: string;
@@ -33,6 +37,8 @@ export interface Database {
           credit_balance?: number;
           name?: string | null;
           avatar_url?: string | null;
+          referral_code?: string;
+          total_referral_earnings?: number;
         };
       };
       transactions: {
@@ -126,6 +132,35 @@ export interface Database {
           user_id?: string | null;
           processed_at?: string | null;
           notes?: string | null;
+        };
+      };
+      referrals: {
+        Row: {
+          id: string;
+          created_at: string;
+          referrer_id: string;
+          referred_id: string;
+          converted_at: string | null;
+          reward_paid: boolean;
+          reward_amount: number;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          referrer_id: string;
+          referred_id: string;
+          converted_at?: string | null;
+          reward_paid?: boolean;
+          reward_amount?: number;
+        };
+        Update: {
+          id?: string;
+          created_at?: string;
+          referrer_id?: string;
+          referred_id?: string;
+          converted_at?: string | null;
+          reward_paid?: boolean;
+          reward_amount?: number;
         };
       };
     };

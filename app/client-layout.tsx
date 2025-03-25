@@ -152,9 +152,21 @@ function NavbarContent() {
                         : "opacity-0 invisible"
                     }`}
                   >
+                    <Link
+                      href="/earn"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Earn $1 per Referral
+                    </Link>
+                    <Link
+                      href="/add-referral"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Add Referral Code
+                    </Link>
                     <button
                       onClick={handleSignOut}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 border-t border-gray-100"
                     >
                       Logout
                     </button>
@@ -355,13 +367,53 @@ function NavbarContent() {
                   Login
                 </button>
               ) : (
-                <div className="py-3 flex justify-center">
+                <div className="py-3 flex flex-col">
+                  <Link
+                    href="/earn"
+                    className="text-gray-700 hover:text-blue-500 font-medium py-2 flex items-center justify-center"
+                  >
+                    <span className="mr-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                    Earn $1 per Referral
+                  </Link>
+                  <Link
+                    href="/add-referral"
+                    className="text-gray-700 hover:text-blue-500 font-medium py-2 flex items-center justify-center"
+                  >
+                    <span className="mr-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </span>
+                    Add Referral Code
+                  </Link>
                   <button
                     onClick={async () => {
                       await handleSignOut();
                       setMobileMenuOpen(false);
                     }}
-                    className="text-gray-700 hover:text-blue-500 font-medium flex items-center"
+                    className="text-gray-700 hover:text-blue-500 font-medium py-2 flex items-center justify-center border-t border-gray-100 mt-2"
                   >
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium mr-2">
                       {user?.email?.charAt(0).toUpperCase() || "U"}

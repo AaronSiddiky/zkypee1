@@ -60,10 +60,10 @@ export default function AboutPage() {
             />
           </svg>
           <a
-            href="mailto:leonard.holter@columbia.edu"
+            href="mailto:contact@zkypee.com"
             className="text-lg font-medium hover:underline"
           >
-            leonard.holter@columbia.edu
+            contact@zkypee.com
           </a>
         </div>
       </div>

@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { motion } from "framer-motion";
-import ReCAPTCHA from "react-google-recaptcha";
+import { getReferralCodeFromURL, validateReferralCode, trackReferral } from "../lib/referrals";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Helper function to get the base URL with a fallback to window.location.origin
 function getBaseUrl() {
@@ -21,39 +23,30 @@ interface AuthProps {
 export default function Auth({ onSuccess }: AuthProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [captchaVerified, setCaptchaVerified] = useState(false);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
-
-  const handleCaptchaChange = (token: string | null) => {
-    setCaptchaVerified(!!token);
-  };
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClientComponentClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-
-    // Validate CAPTCHA for login (always require for login, optionally for signup)
-    if (!isSignUp && !captchaVerified) {
-      setError("Please complete the CAPTCHA verification");
-      return;
-    }
-
     setLoading(true);
 
     try {
       if (isSignUp) {
-        // Sign up the user with auto-confirmation enabled
-        const { error: signUpError } = await supabase.auth.signUp({
+        // Sign up the user
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            // Use the configured base URL with the callback path
             emailRedirectTo: `${getBaseUrl()}/auth/callback`,
             data: {
-              email_confirmed: true, // Add custom user data indicating email is confirmed
+              email_confirmed: true,
+              name: name,
             },
           },
         });
@@ -81,13 +74,7 @@ export default function Auth({ onSuccess }: AuthProps) {
         if (onSuccess) onSuccess();
       }
     } catch (err: any) {
-      console.error("Authentication error:", err);
       setError(err.message || "An error occurred during authentication");
-      // Reset CAPTCHA on error
-      if (recaptchaRef.current) {
-        recaptchaRef.current.reset();
-      }
-      setCaptchaVerified(false);
     } finally {
       setLoading(false);
     }
@@ -98,10 +85,6 @@ export default function Auth({ onSuccess }: AuthProps) {
     setLoading(true);
 
     try {
-      console.log(
-        "Signing in with Google, redirect URL:",
-        `${getBaseUrl()}/auth/callback`
-      );
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -110,9 +93,7 @@ export default function Auth({ onSuccess }: AuthProps) {
       });
 
       if (error) throw error;
-      // No need for onSuccess call here as the redirect will handle the completion
     } catch (err: any) {
-      console.error("Google authentication error:", err);
       setError(err.message || "An error occurred during Google authentication");
       setLoading(false);
     }
@@ -227,29 +208,29 @@ export default function Auth({ onSuccess }: AuthProps) {
           )}
         </div>
 
-        {/* reCAPTCHA */}
-        {!isSignUp && (
-          <div className="mb-6">
-            <div className="flex justify-center">
-              <ReCAPTCHA
-                ref={recaptchaRef}
-                sitekey={
-                  process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY ||
-                  "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
-                }
-                onChange={handleCaptchaChange}
-              />
-            </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
-              This site is protected by reCAPTCHA to prevent spam and automated
-              abuse.
-            </p>
+        {isSignUp && (
+          <div className="mb-4">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Full Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+              placeholder="John Doe"
+              required
+            />
           </div>
         )}
 
         <motion.button
           type="submit"
-          disabled={loading || (!isSignUp && !captchaVerified)}
+          disabled={loading}
           className="w-full py-2.5 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 transition-colors duration-200 font-medium shadow-md"
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.99 }}
@@ -260,13 +241,7 @@ export default function Auth({ onSuccess }: AuthProps) {
 
       <div className="mt-6 text-center">
         <button
-          onClick={() => {
-            setIsSignUp(!isSignUp);
-            setCaptchaVerified(false);
-            if (recaptchaRef.current) {
-              recaptchaRef.current.reset();
-            }
-          }}
+          onClick={() => setIsSignUp(!isSignUp)}
           className="text-blue-500 hover:text-blue-700 text-sm font-medium transition-colors duration-200"
         >
           {isSignUp
