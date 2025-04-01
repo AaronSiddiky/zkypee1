@@ -8,9 +8,18 @@ const VoiceResponse = twilio.twiml.VoiceResponse;
 // Handle TwiML for voice applications
 export async function POST(request: Request) {
   try {
+    console.log("[Voice Route] Received POST request");
+    
     const data = await request.formData();
     const toValue = data.get("To");
     const to = toValue?.toString() || "";
+
+    // Log all incoming data for debugging
+    const formDataObj: Record<string, any> = {};
+    data.forEach((value, key) => {
+      formDataObj[key] = value;
+    });
+    console.log("[Voice Route] Incoming form data:", formDataObj);
 
     // Extract OutgoingNumber from formData if available
     const outgoingNumberValue = data.get("OutgoingNumber");
@@ -20,32 +29,27 @@ export async function POST(request: Request) {
     if (outgoingNumberValue) {
       if (typeof outgoingNumberValue === "object") {
         try {
-          // Try to convert object to string representation
           const objString = JSON.stringify(outgoingNumberValue);
-          console.log("[Voice TwiML] OutgoingNumber was object:", objString);
-          // Extract phone number from object if it has a phoneNumber property
+          console.log("[Voice Route] OutgoingNumber was object:", objString);
           const parsed = JSON.parse(objString);
           if (parsed && parsed.phoneNumber) {
             outgoingNumber = parsed.phoneNumber;
           }
         } catch (err) {
-          console.error(
-            "[Voice TwiML] Failed to parse OutgoingNumber object:",
-            err
-          );
+          console.error("[Voice Route] Failed to parse OutgoingNumber object:", err);
         }
       } else {
-        // Use the string value directly
         outgoingNumber = outgoingNumberValue.toString();
       }
     }
 
     // Log the received parameters for debugging
-    console.log("[Voice TwiML] To:", to);
-    console.log("[Voice TwiML] OutgoingNumber:", outgoingNumber);
+    console.log("[Voice Route] To:", to);
+    console.log("[Voice Route] OutgoingNumber:", outgoingNumber);
 
     const host = request.headers.get("host") || "localhost:3000";
     const protocol = host.includes("localhost") ? "http" : "https";
+    console.log("[Voice Route] Host:", host, "Protocol:", protocol);
 
     // Final safety check to never use [object Object] as callerId
     if (
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
       outgoingNumber.toString() === "[object Object]"
     ) {
       console.warn(
-        "[Voice TwiML] Invalid outgoingNumber detected, using default instead:",
+        "[Voice Route] Invalid outgoingNumber detected, using default instead:",
         outgoingNumber
       );
       outgoingNumber = DEFAULT_TWILIO_PHONE_NUMBER;
@@ -64,9 +68,11 @@ export async function POST(request: Request) {
 
     // If the request is from a browser client
     if (to) {
+      console.log("[Voice Route] Creating Dial verb for:", to);
+      
       // Create a <Dial> verb to connect to the phone number
       const dial = twiml.dial({
-        callerId: outgoingNumber, // Use the extracted outgoing number instead of hardcoded value
+        callerId: outgoingNumber,
         answerOnBridge: true,
         record: "record-from-answer",
         timeout: 30,
@@ -77,32 +83,31 @@ export async function POST(request: Request) {
       // Add the number to dial with status callbacks
       dial.number(
         {
-          statusCallbackEvent: [
-            "initiated",
-            "ringing",
-            "answered",
-            "completed",
-          ],
+          statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
           statusCallback: `${protocol}://${host}/api/twilio/call-status`,
           statusCallbackMethod: "POST",
         },
         to
       );
     } else {
+      console.log("[Voice Route] No destination number provided");
       twiml.say("No destination number provided.");
     }
 
+    const twimlString = twiml.toString();
+    console.log("[Voice Route] Generated TwiML:", twimlString);
+
     // Return the TwiML as XML with CORS headers
-    return new NextResponse(twiml.toString(), {
+    return new NextResponse(twimlString, {
       headers: {
         "Content-Type": "text/xml",
         ...corsHeaders,
       },
     });
   } catch (error) {
-    console.error("Error generating TwiML:", error);
+    console.error("[Voice Route] Error generating TwiML:", error);
     const twiml = new VoiceResponse();
-    twiml.say("An error occurred while processing your call.");
+    twiml.say("An error occurred while processing your call. Please try again.");
     return new NextResponse(twiml.toString(), {
       headers: {
         "Content-Type": "text/xml",
