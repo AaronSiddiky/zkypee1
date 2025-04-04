@@ -12,6 +12,8 @@ interface Message {
   from: string;
   body: string;
   timestamp: string;
+  status: string;
+  error?: string;
 }
 
 export default function DialPage() {
