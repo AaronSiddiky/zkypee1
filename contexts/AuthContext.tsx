@@ -24,7 +24,7 @@ type AuthContextType = {
 };
 
 // Fixed session timeout in minutes (not configurable by users)
-const SESSION_TIMEOUT_MINUTES = 45;
+const SESSION_TIMEOUT_MINUTES = 120;
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -44,6 +44,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const activityTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
   const supabase = createClientComponentClient<Database>();
+
+  // Initialize auth state
+  useEffect(() => {
+    setLoading(true);
+    
+    // Get initial session
+    const initializeAuth = async () => {
+      try {
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          setSession(session);
+          setUser(session.user);
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error);
+        setSession(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Reset the activity timer and schedule the next check
   const resetActivityTimer = () => {
@@ -110,28 +151,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
   }, [user]);
-
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   // Add sign in function
   const signIn = async (email: string, password: string) => {

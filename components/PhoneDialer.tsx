@@ -21,6 +21,8 @@ import {
   SpeakerWaveIcon,
   ClockIcon,
   CurrencyDollarIcon,
+  ChevronUpIcon,
+  UserIcon,
 } from "@heroicons/react/24/outline";
 import { playDTMF, cleanupAudio } from "@/lib/audio";
 import { deductCreditsForCall } from "@/lib/credits";
@@ -272,8 +274,8 @@ const countryCodes = [
 ];
 
 interface PhoneDialerProps {
-  user: any | null;
-  loading: boolean;
+  user: any;
+  loading?: boolean;
 }
 
 interface DialButtonProps {
@@ -294,16 +296,16 @@ const DialButton: React.FC<DialButtonProps> = ({
     <motion.button
       key={value}
       onClick={onClick}
-      className={`bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium py-4 rounded-md transition-colors relative ${className}`}
+      className={`bg-white/20 hover:bg-white/30 text-white font-medium py-6 rounded-2xl transition-all relative ${className}`}
       disabled={disabled}
       whileTap={{ scale: 0.95 }}
-      whileHover={{ backgroundColor: "#e5e7eb" }}
+      whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.3)" }}
     >
       <div className="flex flex-col items-center justify-center">
-        <span className="text-xl">{value}</span>
-        {value === "0" && <span className="text-xs text-gray-500 mt-1">+</span>}
+        <span className="text-2xl">{value}</span>
+        {value === "0" && <span className="text-xs text-white/70 mt-1">+</span>}
         {value === "1" && (
-          <span className="text-xs text-gray-500 mt-1">Voicemail</span>
+          <span className="text-xs text-white/70 mt-1">Voicemail</span>
         )}
       </div>
     </motion.button>
@@ -499,6 +501,33 @@ const CallCostTimer: React.FC<CallCostTimerProps> = ({
 
 export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [showCountryList, setShowCountryList] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(countryCodes[36]); // Default to Canada
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showCallFromOptions, setShowCallFromOptions] = useState(false);
+  const [selectedCallFrom, setSelectedCallFrom] = useState({ id: 'public', label: 'Public number' });
+  const callFromRef = useRef<HTMLDivElement>(null);
+  
+  const callFromOptions = [
+    { id: 'public', label: 'Public number' },
+    { id: 'custom', label: 'Custom caller ID' },
+    { id: 'buy', label: 'Buy phone number', isNew: true }
+  ];
+
+  // Add a ref for the dropdown
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCallFromOptions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const [showAuth, setShowAuth] = useState(false);
   const [micPermissionStatus, setMicPermissionStatus] = useState<
     "prompt" | "granted" | "denied"
@@ -1562,353 +1591,316 @@ export default function PhoneDialer({ user, loading }: PhoneDialerProps) {
   // Modify the main return to include trial components
   return (
     <div className="w-full">
-      {/* Remove trial indicator at the top */}
-      {/* <TrialModeIndicator /> */}
-
-      {/* Existing phone dialer UI */}
-      <div className="flex flex-col w-full max-w-md mx-auto bg-white rounded-xl shadow-sm p-5 border border-gray-200">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-800">Phone Dialer</h2>
-          {twilioNumber && (
-            <p className="text-sm text-gray-600">
-              Calling from:{" "}
-              <span className="font-medium">
-                {typeof window !== "undefined" &&
-                localStorage.getItem("selectedOutgoingNumber")
-                  ? localStorage.getItem("selectedOutgoingNumber")
-                  : twilioNumber}
-              </span>
-            </p>
-          )}
-        </div>
-
-        {/* Show retry button if initialization failed */}
-        {initializationFailed && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-700 mb-2">
-              Failed to initialize the phone system. This could be due to a
-              network issue.
-            </p>
-            <button
-              onClick={handleRetryInitialization}
-              disabled={initAttemptedRef.current}
-              className="px-3 py-1 text-sm bg-red-100 hover:bg-red-200 text-red-800 rounded-md transition-colors"
-            >
-              {initAttemptedRef.current ? "Retrying..." : "Retry Connection"}
-            </button>
-          </div>
+      {/* Phone number display and info */}
+      <div className="min-h-[35px] -mt-1">
+        {twilioNumber && (
+          <p className="text-white/80 text-sm">
+            Calling from:{" "}
+            <span className="font-medium">
+              {typeof window !== "undefined" &&
+              localStorage.getItem("selectedOutgoingNumber")
+                ? localStorage.getItem("selectedOutgoingNumber")
+                : twilioNumber}
+            </span>
+          </p>
         )}
+        {!twilioNumber && (
+          <p className="text-white/80 text-sm h-5">
+            <span className="opacity-0">Placeholder</span>
+          </p>
+        )}
+      </div>
 
-        {/* Credit Balance - Only show for authenticated users, not trial users */}
+      {/* Show retry button if initialization failed */}
+      {initializationFailed && (
+        <div className="mb-4 p-4 bg-red-500/20 backdrop-blur-sm border border-red-500/30 rounded-xl">
+          <p className="text-sm text-white mb-2">
+            Failed to initialize the phone system. This could be due to a
+            network issue.
+          </p>
+          <button
+            onClick={handleRetryInitialization}
+            disabled={initAttemptedRef.current}
+            className="px-4 py-2 text-sm bg-red-500/30 hover:bg-red-500/40 text-white rounded-lg transition-colors"
+          >
+            {initAttemptedRef.current ? "Retrying..." : "Retry Connection"}
+          </button>
+        </div>
+      )}
+
+      {/* Credit Balance - Fixed height container with reduced margin */}
+      <div className="min-h-[30px] mb-3 flex items-center">
         {!isTrialMode && (
-          <div className="mb-4">
+          <div className="flex items-center">
+            <span className="text-white text-sm mr-2">Balance:</span>
             <CreditBalance />
           </div>
         )}
-
-        {/* Phone number input with country code */}
-        <div
-          className={`relative mb-4 ${
-            localCallState.isConnected ? "opacity-50" : ""
-          }`}
-        >
-          <div className="flex">
-            {/* Country code selector */}
-            <div className="relative" ref={countryDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setShowCountryCodes(!showCountryCodes)}
-                className="flex items-center justify-between w-28 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                disabled={localCallState.isConnected}
-              >
-                <span className="flex items-center">
-                  <span className="mr-2 text-lg">
-                    {selectedCountryCode.flag}
-                  </span>
-                  <span>{selectedCountryCode.code}</span>
-                </span>
-                <ChevronDownIcon className="w-4 h-4 ml-1 text-gray-500" />
-              </button>
-
-              {/* Country code dropdown with search */}
-              <AnimatePresence>
-                {showCountryCodes && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute z-10 w-72 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden flex flex-col"
-                  >
-                    <div className="p-2 border-b border-gray-200 sticky top-0 bg-white z-10">
-                      <div className="relative">
-                        <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                        <input
-                          ref={searchInputRef}
-                          type="text"
-                          value={searchCountry}
-                          onChange={(e) => setSearchCountry(e.target.value)}
-                          placeholder="Search country or code..."
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                        {searchCountry && (
-                          <button
-                            onClick={() => setSearchCountry("")}
-                            className="absolute right-3 top-2.5"
-                          >
-                            <XMarkIcon className="h-5 w-5 text-gray-400" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="overflow-y-auto max-h-60">
-                      {filteredCountryCodes.length === 0 ? (
-                        <div className="p-4 text-gray-500 text-center">
-                          No countries found
-                        </div>
-                      ) : (
-                        filteredCountryCodes.map((country) => (
-                          <button
-                            key={`${country.code}-${country.name}`}
-                            type="button"
-                            className="flex items-center w-full px-4 py-2 text-left hover:bg-gray-100"
-                            onClick={() => {
-                              setSelectedCountryCode(country);
-                              setShowCountryCodes(false);
-                              setSearchCountry("");
-                            }}
-                          >
-                            <span className="mr-2 text-lg">{country.flag}</span>
-                            <span className="font-medium">{country.code}</span>
-                            <span className="ml-2 text-sm text-gray-600">
-                              {country.name}
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Phone number input */}
-            <div className="relative flex-grow">
-              <input
-                type="tel"
-                value={formatPhoneNumberForDisplay(phoneNumber)}
-                onChange={(e) => {
-                  // Filter non-numeric characters except for + at the beginning
-                  const value = e.target.value;
-                  const cleaned = value
-                    .replace(/[^\d\s+()-]/g, "")
-                    .replace(/\s+/g, " ");
-                  setPhoneNumber(cleaned);
-                }}
-                placeholder="Enter phone number"
-                className="w-full h-full px-4 py-2 border border-gray-300 border-l-0 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
-                disabled={localCallState.isConnected}
-              />
-              {phoneNumber && (
-                <button
-                  onClick={handleDelete}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  disabled={localCallState.isConnected}
-                >
-                  <BackspaceIcon className="h-5 w-5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Credit Info for the call - Only show for authenticated users, not trial users */}
-        {fullPhoneNumber && !isTrialMode && (
-          <div className="mb-4">
-            <CallCreditInfo
-              phoneNumber={fullPhoneNumber}
-              onCreditCheck={(hasEnough) => setHasEnoughCredits(hasEnough)}
-            />
-          </div>
-        )}
-
-        {/* Trial call info - Only show for trial users */}
-        {/* Removed the 60-second trial call limitation message
-        {isTrialMode && fullPhoneNumber && !localCallState.isConnected && (
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-md">
-            <div className="flex items-center">
-              <ClockIcon className="h-5 w-5 text-blue-500 mr-2" />
-              <span className="text-sm text-blue-700">
-                Trial calls are limited to 60 seconds
-              </span>
-            </div>
-          </div>
-        )}
-        */}
-
-        {/* Error message */}
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-md">
-            {error}
-            {insufficientCredits && !isTrialMode && (
-              <div className="mt-2">
-                <Link
-                  href="/credits"
-                  className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition-colors"
-                >
-                  Add Credits
-                </Link>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Microphone permission status message */}
-        {micPermissionStatus === "denied" && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4">
-            <p className="font-bold">Microphone access is required</p>
-            <p className="text-sm">
-              Please allow microphone access in your browser settings to make
-              calls.
-            </p>
-          </div>
-        )}
-
-        {/* Add the Call Cost Timer component right before the keypad when on a call */}
-        {localCallState.isConnected && (
-          <CallCostTimer
-            isConnected={localCallState.isConnected}
-            startTime={callStartTime}
-            rate={callRate}
-            userId={user?.id}
-            phoneNumber={fullPhoneNumber}
-            callSid={callSid}
-          />
-        )}
-
-        {/* Dialer buttons */}
-        <div className="mb-4">
-          {/* Show message when in a call that dial pad can be used */}
-          {localCallState.isConnected && (
-            <div className="text-sm text-center py-2 mb-2 bg-blue-50 text-blue-700 rounded-lg">
-              <span className="inline-block mr-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
-              Dial pad active for menu navigation
-            </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
-              <DialButton
-                key={num}
-                value={num.toString()}
-                onClick={() => handleNumberClick(num.toString())}
-                disabled={
-                  false
-                } /* Remove the disabled state to allow usage during calls */
-                className={num === 0 ? "dial-button-zero" : ""}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Call/Hangup button */}
-        <div className="flex justify-center">
-          {!localCallState.isConnected ? (
-            <motion.button
-              onClick={handleCall}
-              disabled={
-                localCallState.isConnecting ||
-                (!isReady && !isTrialMode) || // Only check isReady for non-trial users
-                !phoneNumber
-              }
-              className={`flex items-center justify-center w-16 h-16 rounded-full ${
-                localCallState.isConnecting
-                  ? "bg-yellow-500"
-                  : phoneNumber && (isReady || isTrialMode) // Allow trial mode calls
-                  ? "bg-green-500 hover:bg-green-600"
-                  : "bg-gray-300"
-              } text-white transition-colors`}
-              whileTap={{ scale: 0.95 }}
-              whileHover={
-                phoneNumber && (isReady || isTrialMode) ? { scale: 1.05 } : {}
-              }
-            >
-              {localCallState.isConnecting ? (
-                <div className="animate-spin h-6 w-6 border-2 border-white border-t-transparent rounded-full"></div>
-              ) : (
-                <PhoneIcon className="h-8 w-8" />
-              )}
-            </motion.button>
-          ) : (
-            <div className="flex flex-col items-center space-y-4">
-              <motion.button
-                onClick={handleHangUp}
-                className="flex items-center justify-center w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white"
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.05 }}
-              >
-                <PhoneIcon className="h-8 w-8 rotate-135" />
-              </motion.button>
-              <motion.button
-                onClick={handleMuteToggle}
-                className={`p-4 rounded-full ${
-                  localCallState.isMuted
-                    ? "bg-red-500 text-white"
-                    : "bg-gray-200 text-gray-700"
-                } hover:bg-opacity-90 transition-colors`}
-                whileTap={{ scale: 0.95 }}
-                whileHover={{ scale: 1.05 }}
-                disabled={!twilioConnected}
-              >
-                {localCallState.isMuted ? (
-                  <SpeakerXMarkIcon className="h-6 w-6" />
-                ) : (
-                  <SpeakerWaveIcon className="h-6 w-6" />
-                )}
-                <span className="sr-only">
-                  {localCallState.isMuted ? "Unmute" : "Mute"}
-                </span>
-              </motion.button>
-            </div>
-          )}
-        </div>
-
-        {/* Call Info component for in-call UI */}
-        {localCallState.isConnected && (
-          <div className="mt-4">
-            <CallInfo />
+        {isTrialMode && (
+          <div className="text-white/80 text-sm">
+            Trial Mode: {trialCallsRemaining} calls remaining
           </div>
         )}
       </div>
 
-      {/* Add trial conversion modal */}
-      <TrialConversionModal />
-
-      {/* Existing auth modal */}
-      {showAuth && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
+      {/* Phone number input with country code */}
+      <div
+        className={`relative mb-6 ${
+          localCallState.isConnected ? "opacity-50" : ""
+        }`}
+      >
+        <div className="flex">
+          {/* Country code selector */}
+          <div className="relative" ref={countryDropdownRef}>
             <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
-              onClick={() => setShowAuth(false)}
+              type="button"
+              onClick={() => setShowCountryCodes(!showCountryCodes)}
+              className="flex items-center justify-between w-28 px-4 py-3 border border-white/20 rounded-l-xl focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/10 text-white"
+              disabled={localCallState.isConnected}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <span className="flex items-center">
+                <span className="mr-2 text-lg">
+                  {selectedCountryCode.flag}
+                </span>
+                <span>{selectedCountryCode.code}</span>
+              </span>
+              <ChevronDownIcon className="w-4 h-4 ml-1 text-white/70" />
             </button>
-            <Auth onSuccess={() => setShowAuth(false)} />
+
+            {/* Country code dropdown with search */}
+            {showCountryCodes && (
+              <div className="absolute left-0 mt-1 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 py-2 z-50">
+                <div className="px-4 py-2">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Search country..."
+                    value={searchCountry}
+                    onChange={(e) => {
+                      setSearchCountry(e.target.value);
+                      setFilteredCountryCodes(
+                        countryCodes.filter((c) =>
+                          c.name
+                            .toLowerCase()
+                            .includes(e.target.value.toLowerCase())
+                        )
+                      );
+                    }}
+                    className="w-full px-3 py-2 bg-white/90 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto">
+                  {filteredCountryCodes.map((country) => (
+                    <button
+                      key={country.code}
+                      onClick={() => {
+                        setSelectedCountryCode(country);
+                        setShowCountryCodes(false);
+                      }}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center space-x-2 text-gray-900"
+                    >
+                      <span className="text-lg">{country.flag}</span>
+                      <span>{country.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          <div className="relative flex-grow">
+            <input
+              type="tel"
+              value={formatPhoneNumberForDisplay(phoneNumber)}
+              onChange={(e) => {
+                const value = e.target.value;
+                const cleaned = value
+                  .replace(/[^\d\s+()-]/g, "")
+                  .replace(/\s+/g, " ");
+                setPhoneNumber(cleaned);
+              }}
+              placeholder="Enter phone number"
+              className="w-full h-full px-4 py-3 border border-white/20 border-l-0 rounded-r-xl focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/10 text-white text-lg placeholder-white/50"
+              disabled={localCallState.isConnected}
+            />
+            {phoneNumber && (
+              <button
+                onClick={handleDelete}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white/70 hover:text-white"
+                disabled={localCallState.isConnected}
+              >
+                <BackspaceIcon className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Call from dropdown */}
+      <div className="relative mb-6" ref={callFromRef}>
+        <div className="flex items-center space-x-2 text-sm text-white/80">
+          <span>Call from:</span>
+          <button
+            onClick={() => setShowCallFromOptions(!showCallFromOptions)}
+            className="flex items-center space-x-1 px-4 py-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"
+          >
+            <PhoneIcon className="w-4 h-4 text-white/70" />
+            <span className="text-white">{selectedCallFrom.label}</span>
+            <ChevronDownIcon className={`w-4 h-4 transform transition-transform ${showCallFromOptions ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {showCallFromOptions && (
+          <div className="absolute left-0 mt-1 w-64 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-gray-200 py-1 z-50">
+            <div className="px-4 py-2 text-xs text-gray-600 bg-gray-50 border-b border-gray-200">
+              Default options
+            </div>
+            <button
+              onClick={() => {
+                setSelectedCallFrom({ id: 'public', label: 'Public number' });
+                setShowCallFromOptions(false);
+              }}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center space-x-2 text-gray-900"
+            >
+              <PhoneIcon className="w-4 h-4 text-gray-600" />
+              <span className="text-sm">Public number</span>
+            </button>
+            <button
+              onClick={() => {
+                setSelectedCallFrom({ id: 'custom', label: 'Custom caller ID' });
+                setShowCallFromOptions(false);
+              }}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center space-x-2 text-gray-900"
+            >
+              <UserIcon className="w-4 h-4 text-gray-600" />
+              <span className="text-sm">Custom caller ID</span>
+            </button>
+            <button
+              onClick={() => {
+                setSelectedCallFrom({ id: 'buy', label: 'Buy phone number' });
+                setShowCallFromOptions(false);
+              }}
+              className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center space-x-2 text-gray-900"
+            >
+              <CurrencyDollarIcon className="w-4 h-4 text-gray-600" />
+              <span className="text-sm">Buy phone number</span>
+              <span className="ml-auto px-2 py-0.5 text-xs bg-blue-500 text-white rounded-full">NEW</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Microphone permission warning */}
+      {micPermissionStatus === "denied" && (
+        <div className="bg-red-500/20 backdrop-blur-sm border border-red-500/30 text-white px-4 py-3 rounded-xl relative mb-6">
+          <p className="font-bold">Microphone access is required</p>
+          <p className="text-sm text-white/80">
+            Please allow microphone access in your browser settings to make calls.
+          </p>
+        </div>
+      )}
+
+      {/* Call Cost Timer */}
+      {localCallState.isConnected && (
+        <CallCostTimer
+          isConnected={localCallState.isConnected}
+          startTime={callStartTime}
+          rate={callRate}
+          userId={user?.id}
+          phoneNumber={fullPhoneNumber}
+          callSid={callSid}
+        />
+      )}
+
+      {/* Dialer buttons */}
+      <div className="mb-6">
+        {/* Show message when in a call that dial pad can be used */}
+        {localCallState.isConnected && (
+          <div className="text-sm text-center py-2 mb-4 bg-white/10 text-white rounded-xl">
+            <span className="inline-block mr-1 w-2 h-2 bg-white rounded-full animate-pulse"></span>
+            Dial pad active for menu navigation
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-3">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9, "*", 0, "#"].map((num) => (
+            <DialButton
+              key={num}
+              value={num.toString()}
+              onClick={() => handleNumberClick(num.toString())}
+              disabled={false}
+              className={num === 0 ? "dial-button-zero" : ""}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Call/Hangup button */}
+      <div className="flex justify-center">
+        {!localCallState.isConnected ? (
+          <motion.button
+            onClick={handleCall}
+            disabled={
+              localCallState.isConnecting ||
+              (!isReady && !isTrialMode) ||
+              !phoneNumber
+            }
+            className={`flex items-center justify-center w-20 h-20 rounded-full ${
+              localCallState.isConnecting
+                ? "bg-yellow-500"
+                : phoneNumber && (isReady || isTrialMode)
+                ? "bg-green-500 hover:bg-green-600"
+                : "bg-white/20"
+            } text-white transition-colors`}
+            whileTap={{ scale: 0.95 }}
+            whileHover={
+              phoneNumber && (isReady || isTrialMode) ? { scale: 1.05 } : {}
+            }
+          >
+            {localCallState.isConnecting ? (
+              <div className="animate-spin h-8 w-8 border-3 border-white border-t-transparent rounded-full"></div>
+            ) : (
+              <PhoneIcon className="h-10 w-10" />
+            )}
+          </motion.button>
+        ) : (
+          <div className="flex flex-col items-center space-y-4">
+            <motion.button
+              onClick={handleHangUp}
+              className="flex items-center justify-center w-20 h-20 rounded-full bg-red-500 hover:bg-red-600 text-white"
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }}
+            >
+              <PhoneIcon className="h-10 w-10 rotate-135" />
+            </motion.button>
+            <motion.button
+              onClick={handleMuteToggle}
+              className={`p-4 rounded-full ${
+                localCallState.isMuted
+                  ? "bg-red-500 text-white"
+                  : "bg-white/20 text-white"
+              } hover:bg-opacity-90 transition-colors`}
+              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.05 }}
+              disabled={!twilioConnected}
+            >
+              {localCallState.isMuted ? (
+                <SpeakerXMarkIcon className="h-6 w-6" />
+              ) : (
+                <SpeakerWaveIcon className="h-6 w-6" />
+              )}
+              <span className="sr-only">
+                {localCallState.isMuted ? "Unmute" : "Mute"}
+              </span>
+            </motion.button>
+          </div>
+        )}
+      </div>
+
+      {/* Call Info component for in-call UI */}
+      {localCallState.isConnected && (
+        <div className="mt-6">
+          <CallInfo />
         </div>
       )}
     </div>

@@ -2,16 +2,52 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 248, 248, 248;
+/* Reset margins and padding */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  color: #111827;  /* dark gray, almost black */
+  background: #00AFF0;
   overflow-x: hidden;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Removed custom cursor styles */
+.custom-cursor {
+  display: none;
+}
+
+.custom-cursor a,
+.custom-cursor button {
+  cursor: auto;
+}
+
+/* Force dark text in white backgrounds */
+.bg-white {
+  color: #111827 !important;
+}
+
+.bg-white input,
+.bg-white textarea,
+.bg-white select {
+  color: #111827 !important;
+}
+
+/* Only use white text on dark/colored backgrounds */
+.bg-[#00AFF0],
+.bg-blue-500,
+.bg-[#0078D4] {
+  color: white;
 }
 
 /* Custom scrollbar */
@@ -20,16 +56,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #008cc0;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #006990;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #005570;
 }
 
 /* Animation for the background grid */
@@ -44,15 +80,6 @@ body {
 
 .grid-background {
   animation: fadeIn 1s ease-in-out;
-}
-
-.custom-cursor {
-  cursor: none;
-}
-
-.custom-cursor a,
-.custom-cursor button {
-  cursor: none;
 }
 
 /* Mobile optimizations */

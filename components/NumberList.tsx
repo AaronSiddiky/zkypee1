@@ -155,26 +155,35 @@ export default function NumberList({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-32">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center h-40">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-white mb-3"></div>
+          <p className="text-white/70 text-sm">Loading available numbers...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-        {error}
+      <div className="rounded-lg p-6 border border-red-300/30 bg-red-400/10 backdrop-blur-sm text-white">
+        <div className="flex items-center mb-3">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-red-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <h3 className="text-lg font-medium text-white">Error Loading Numbers</h3>
+        </div>
+        <p>{error}</p>
       </div>
     );
   }
 
   if (numbers.length === 0) {
     return (
-      <div className="text-center py-8 bg-yellow-50 border border-yellow-100 rounded-lg p-6">
+      <div className="text-center py-12 rounded-lg border border-yellow-300/30 bg-yellow-400/10 backdrop-blur-sm">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-12 w-12 mx-auto text-yellow-400 mb-4"
+          className="h-14 w-14 mx-auto text-yellow-200 mb-4"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -186,12 +195,11 @@ export default function NumberList({
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
           />
         </svg>
-        <h3 className="text-lg font-medium text-yellow-800 mb-2">
+        <h3 className="text-xl font-semibold text-white mb-3">
           No Numbers Available
         </h3>
-        <p className="text-yellow-600">
-          Twilio doesn't currently have any phone numbers available for this
-          country. Please try selecting a different country.
+        <p className="text-white/80 max-w-md mx-auto">
+          We couldn't find any available numbers for this country at the moment. Please check back soon.
         </p>
       </div>
     );
@@ -286,60 +294,75 @@ export default function NumberList({
 
       {/* Error Message */}
       {purchaseStatus === "error" && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          <p className="font-medium">Failed to purchase number</p>
+        <div className="mb-6 p-4 rounded-lg border border-red-300/30 bg-red-400/10 backdrop-blur-sm text-white">
+          <p className="font-medium flex items-center mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Failed to purchase number
+          </p>
           <p>{purchaseError}</p>
         </div>
       )}
 
       {/* Numbers Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {numbers.map((number) => (
           <div
             key={number.phoneNumber}
-            className={`border rounded-lg p-4 transition-all duration-200 ${
+            className={`rounded-xl p-5 transition-all duration-300 hover:shadow-lg ${
               selectedNumber?.phoneNumber === number.phoneNumber
-                ? "border-blue-500 bg-blue-50"
-                : "border-gray-200 hover:border-blue-300"
+                ? "border-2 border-white bg-blue-500/20 shadow-lg"
+                : "border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-sm"
             }`}
           >
-            <div className="flex justify-between items-start mb-2">
-              <p className="font-medium text-lg">{number.friendlyName}</p>
-              <span className="text-xs px-2 py-1 bg-gray-100 rounded-full">
+            <div className="flex justify-between items-start mb-3">
+              <p className="font-semibold text-xl text-white">{number.friendlyName}</p>
+              <span className="text-xs px-3 py-1 bg-blue-500/30 text-white rounded-full font-medium">
                 {number.numberType || "Local"}
               </span>
             </div>
-            <p className="text-sm text-gray-500 mb-2">
+            <p className="text-sm text-white/80 mb-3">
               {number.locality || number.region || "Unknown location"}
             </p>
 
             {/* Capabilities */}
-            <div className="flex space-x-2 mb-3">
+            <div className="flex flex-wrap gap-2 mb-4">
               {number.capabilities?.voice && (
-                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                <span className="text-xs px-3 py-1 bg-blue-500/20 text-white rounded-full flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
                   Voice
                 </span>
               )}
               {number.capabilities?.sms && (
-                <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                <span className="text-xs px-3 py-1 bg-green-500/20 text-white rounded-full flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
                   SMS
                 </span>
               )}
               {number.capabilities?.mms && (
-                <span className="text-xs px-2 py-1 bg-purple-100 text-purple-800 rounded-full">
+                <span className="text-xs px-3 py-1 bg-purple-500/20 text-white rounded-full flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
                   MMS
                 </span>
               )}
             </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-blue-500 font-medium">
+            <div className="flex justify-between items-center pt-2 border-t border-white/10">
+              <span className="text-white font-medium text-lg">
                 ${(number.price * 3).toFixed(2)}/month
               </span>
               <Button
                 variant="primary"
                 size="small"
                 onClick={() => handleSelectNumber(number)}
+                className="rounded-full px-6"
               >
                 Buy
               </Button>

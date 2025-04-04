@@ -4,9 +4,12 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import Auth from "../../components/Auth";
+import Image from "next/image";
+import Link from "next/link";
+import { ChevronDownIcon } from "@heroicons/react/24/outline";
 
 export default function AIAssistantPage() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [prompt, setPrompt] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,8 +23,33 @@ export default function AIAssistantPage() {
     summary?: string;
   } | null>(null);
   const [error, setError] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState("cailee");
+  const [selectedVoice, setSelectedVoice] = useState("Cailee (Female)");
   const [twilioNumber, setTwilioNumber] = useState<string | null>(null);
+  const [showVoices, setShowVoices] = useState(false);
+
+  // Show loading state while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#00AFF0]">
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 flex items-center space-x-4">
+          <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-gray-900 font-medium">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not authenticated, show auth component
+  if (!user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-[#00AFF0]">
+        <Auth onSuccess={() => window.location.reload()} />
+      </div>
+    );
+  }
 
   // Add this function to format phone numbers
   const formatPhoneNumber = (number: string): string => {
@@ -127,7 +155,7 @@ export default function AIAssistantPage() {
       const result = await handleAICall(
         prompt,
         formattedPhoneNumber,
-        selectedVoice
+        selectedVoice.split(" ")[0]
       );
 
       if (!result.success) {
@@ -212,257 +240,139 @@ export default function AIAssistantPage() {
     }
   };
 
+  const voices = [
+    "Cailee (Female)",
+    "James (Male)",
+    "Sarah (Female)",
+    "Michael (Male)",
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <motion.div
-        className="text-center mb-12"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <h1 className="text-4xl font-bold mb-4">
-          <span className="text-black">AI Voice </span>
-          <span className="text-blue-500">Assistant</span>
-        </h1>
-        <p className="text-gray-600 mt-4">
-          Experience smarter conversations with our AI-powered voice assistant
-        </p>
-      </motion.div>
-
-      <motion.div
-        className="bg-white rounded-lg shadow-lg p-8"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label
-              htmlFor="phoneNumber"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Phone Number to Call
-            </label>
-            <input
-              type="tel"
-              id="phoneNumber"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="+1 (555) 123-4567"
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              disabled={isProcessing || callStatus === "in-progress"}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="prompt"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Instructions for the AI
-            </label>
-            <textarea
-              id="prompt"
-              rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g., Call this Korean BBQ restaurant and ask if they cook the meat for customers. Also ask about their prices and if reservations are required."
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              disabled={isProcessing || callStatus === "in-progress"}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="voice"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              AI Voice
-            </label>
-            <select
-              id="voice"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={selectedVoice}
-              onChange={(e) => setSelectedVoice(e.target.value)}
-              disabled={isProcessing || callStatus === "in-progress"}
-            >
-              <option value="cailee">Cailee (Female)</option>
-              <option value="emma">Emma (Female)</option>
-              <option value="josh">Josh (Male)</option>
-              <option value="ray">Ray (Male)</option>
-              <option value="dave">Dave (Male)</option>
-            </select>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-100 text-red-700 rounded-md">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={
-              isProcessing ||
-              callStatus === "in-progress" ||
-              !prompt.trim() ||
-              !phoneNumber.trim()
-            }
-            className={`w-full py-3 px-4 rounded-full text-white font-medium flex items-center justify-center ${
-              isProcessing || callStatus === "in-progress"
-                ? "bg-blue-400"
-                : "bg-blue-500 hover:bg-blue-600"
-            }`}
+    <div className="min-h-screen bg-gradient-to-br from-[#00AFF0] to-[#0078D4] p-6">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white/20 backdrop-blur-md rounded-3xl p-8 shadow-xl border border-white/10">
+          <motion.div
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
           >
-            {isProcessing ? (
-              <>
-                <svg
-                  className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  ></circle>
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                Processing...
-              </>
-            ) : callStatus === "in-progress" ? (
-              "Call in progress..."
-            ) : (
-              <>
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                  />
-                </svg>
-                Make AI Call
-              </>
-            )}
-          </button>
-        </form>
-
-        {callStatus !== "idle" && (
-          <div className="mt-8 border-t border-gray-200 pt-6">
-            <div className="flex items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-800">
-                Call Status:{" "}
-              </h3>
-              <span
-                className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                  callStatus === "scheduled"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : callStatus === "in-progress"
-                    ? "bg-blue-100 text-blue-800"
-                    : callStatus === "completed"
-                    ? "bg-green-100 text-green-800"
-                    : "bg-red-100 text-red-800"
-                }`}
-              >
-                {callStatus === "scheduled"
-                  ? "Scheduled"
-                  : callStatus === "in-progress"
-                  ? "In Progress"
-                  : callStatus === "completed"
-                  ? "Completed"
-                  : "Failed"}
+            <h1 className="text-5xl font-bold mb-6 text-white flex items-center justify-center gap-4">
+              AI Voice <span className="text-white">Assistant</span>
+              <span className="text-xs bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full border border-white/30 font-semibold tracking-wider">
+                BETA
               </span>
+            </h1>
+            <p className="text-xl text-white/90 max-w-2xl mx-auto">
+              Experience smarter conversations with our AI-powered voice assistant
+            </p>
+          </motion.div>
+
+          <form onSubmit={handleSubmit} className="space-y-8">
+            <div>
+              <label
+                htmlFor="phoneNumber"
+                className="block text-xl font-semibold text-white mb-4"
+              >
+                Phone Number to Call
+              </label>
+              <input
+                type="tel"
+                id="phoneNumber"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="+1 (555) 123-4567"
+                className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 text-lg"
+              />
             </div>
 
-            {callStatus === "completed" && callResult && (
-              <div className="space-y-6">
-                {callResult.summary && (
-                  <div>
-                    <h4 className="font-medium text-gray-700 mb-2">Summary</h4>
-                    <p className="text-gray-600 bg-gray-50 p-4 rounded-md">
-                      {callResult.summary}
-                    </p>
-                  </div>
-                )}
+            <div>
+              <label
+                htmlFor="instructions"
+                className="block text-xl font-semibold text-white mb-4"
+              >
+                Instructions for the AI
+              </label>
+              <textarea
+                id="instructions"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="e.g., Call this Korean BBQ restaurant and ask if they cook the meat for customers. Also ask about their prices and if reservations are required."
+                className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 min-h-[120px] text-lg"
+              />
+            </div>
 
-                {callResult.transcript &&
-                callResult.transcript !== "No transcript available" ? (
-                  <div>
-                    <h4 className="font-medium text-gray-700 mb-2">
-                      Transcript
-                    </h4>
-                    <div className="bg-gray-50 p-4 rounded-md max-h-60 overflow-y-auto">
-                      {callResult.transcript
-                        .split("\n\n")
-                        .map((exchange, i) => (
-                          <div key={i} className="mb-3">
-                            {exchange.split("\n").map((line, j) => (
-                              <p key={j} className="text-gray-600">
-                                {line}
-                              </p>
-                            ))}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <h4 className="font-medium text-gray-700 mb-2">
-                      Transcript
-                    </h4>
-                    <p className="text-gray-500 italic bg-gray-50 p-4 rounded-md">
-                      Transcript not available. BlandAI may still be processing
-                      the call recording.
-                    </p>
-                  </div>
-                )}
-
+            <div>
+              <label className="block text-xl font-semibold text-white mb-4">
+                AI Voice
+              </label>
+              <div className="relative">
                 <button
-                  onClick={handleManualRefresh}
-                  disabled={isProcessing}
-                  className="w-full py-2 px-4 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 flex items-center justify-center"
+                  onClick={() => setShowVoices(!showVoices)}
+                  className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-white/50 flex items-center justify-between text-lg"
                 >
-                  {isProcessing ? (
-                    "Refreshing..."
-                  ) : (
-                    <>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5 mr-2"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                        />
-                      </svg>
-                      Refresh Call Data
-                    </>
-                  )}
+                  <span>{selectedVoice}</span>
+                  <ChevronDownIcon
+                    className={`w-5 h-5 transform transition-transform ${
+                      showVoices ? "rotate-180" : ""
+                    }`}
+                  />
                 </button>
+
+                {showVoices && (
+                  <div className="absolute w-full mt-2 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-white/20 py-1 z-50">
+                    {voices.map((voice) => (
+                      <button
+                        key={voice}
+                        onClick={() => {
+                          setSelectedVoice(voice);
+                          setShowVoices(false);
+                        }}
+                        className="w-full px-4 py-3 text-left hover:bg-gray-100 text-gray-900"
+                      >
+                        {voice}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
+            </div>
+
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-4 bg-red-50 border border-red-100 text-red-700 rounded-xl"
+              >
+                {error}
+              </motion.div>
             )}
-          </div>
-        )}
-      </motion.div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={isProcessing || callStatus === "in-progress"}
+              className={`w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-4 px-6 rounded-xl shadow-lg transition-colors text-lg
+                ${isProcessing || callStatus === "in-progress"
+                ? "bg-blue-400 cursor-not-allowed"
+                : ""}`}
+            >
+              {isProcessing ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </div>
+              ) : (
+                "Schedule Call"
+              )}
+            </motion.button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

@@ -11,14 +11,33 @@ const VoiceResponse = twilio.twiml.VoiceResponse;
 // Handle call status callbacks from Twilio
 export async function POST(request: Request) {
   try {
-    const data = await request.formData();
+    console.log("📞 [Call Status] Callback received");
+
+    // Parse the form data
+    const formData = await request.formData();
+
+    // Log all form data for debugging
+    const formDataObj: Record<string, any> = {};
+    formData.forEach((value, key) => {
+      formDataObj[key] = value;
+    });
+
+    console.log("📞 [Call Status] Data:", formDataObj);
+
+    // Log headers for debugging
+    const headers: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    console.log("📞 [Call Status] Request headers:", headers);
+
     const supabase = createRouteHandlerClient<Database>({ cookies });
 
     // Extract key status information
-    const callSid = data.get("CallSid") as string;
-    const callStatus = data.get("CallStatus") as string;
-    const callDuration = data.get("CallDuration") as string;
-    const phoneNumber = data.get("To") as string;
+    const callSid = formData.get("CallSid") as string;
+    const callStatus = formData.get("CallStatus") as string;
+    const callDuration = formData.get("CallDuration") as string;
+    const phoneNumber = formData.get("To") as string;
 
     // Log the call status for debugging
     console.log("[Call Status]", {

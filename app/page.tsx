@@ -1,448 +1,346 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import CountryFlagRotator from "../components/CountryFlagRotator";
-import MobileDialer from "../components/MobileDialer";
-import PhoneContent from "../components/PhoneContent";
-
-// Sticky header component - only visible on mobile
-const StickyHeader = () => (
-  <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 p-3 flex justify-between items-center z-50 md:hidden">
-    <div className="flex items-center">
-      <span className="text-blue-600 font-bold text-xl">Zkypee</span>
-    </div>
-    <Link
-      href="/dial"
-      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition-colors flex items-center"
-    >
-      <svg
-        className="w-4 h-4 mr-1"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-        />
-      </svg>
-      Call Now
-    </Link>
-  </div>
-);
-
-// Sticky mobile CTA component
-const MobileStickyButton = () => (
-  <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 md:hidden z-50">
-    <Link
-      href="/dial"
-      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center w-full"
-    >
-      <svg
-        className="w-5 h-5 mr-2"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-        />
-      </svg>
-      Try calling for free now
-    </Link>
-  </div>
-);
+import { motion } from "framer-motion";
 
 export default function HomePage() {
-  const [showZkypee, setShowZkypee] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowZkypee(true);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <main>
-      {/* Mobile Design - Only visible on small screens */}
-      <div className="md:hidden pt-16">
-        <StickyHeader />
-        <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
-          <main className="max-w-7xl mx-auto px-4 py-4">
-            {/* Hero Section - Simplified and focused */}
-            <div className="text-center mb-4">
-              <h1 className="text-2xl sm:text-3xl font-bold">
-                <span className="text-blue-600">Call Anyone, Anywhere</span> for
-                Just $0.03/min
-              </h1>
-
-              {/* Columbia University Badge - Moved up for trust */}
-              <div className="flex items-center justify-center mt-2 mb-3">
-                <Image
-                  src="/images/cc.png"
-                  alt="Columbia University Logo"
-                  width={32}
-                  height={32}
-                  className="mr-2"
-                />
-                <p className="text-sm font-medium text-gray-700">
-                  Backed by{" "}
-                  <span className="font-semibold text-blue-700">
-                    Columbia University
-                  </span>
-                </p>
-              </div>
-
-              {/* Direct price comparison */}
-              <div className="bg-green-50 text-green-800 px-3 py-2 rounded-lg text-sm font-medium inline-block mb-3">
-                Save 50% vs Skype ($0.06/min)
-              </div>
-            </div>
-
-            {/* Interactive Dialer - Main focus of the page */}
-            <div className="bg-white rounded-xl shadow-md border border-blue-100 p-4 mb-6">
-              <div className="text-center mb-3">
-                <div className="text-lg font-bold text-blue-600">
-                  Try Your First Call Free
-                </div>
-                <p className="text-sm text-gray-600">
-                  No signup required. Call instantly.
-                </p>
-              </div>
-
-              {/* Embedded Dialer Component */}
-              <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                <MobileDialer />
-              </div>
-            </div>
-
-            {/* Trust Elements */}
-            <div className="mb-6">
-              <div className="flex justify-center space-x-4 mb-4">
-                <div className="text-center">
-                  <div className="text-xl font-bold text-blue-600">10k+</div>
-                  <div className="text-xs text-gray-600">Calls Today</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-blue-600">200+</div>
-                  <div className="text-xs text-gray-600">Countries</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-blue-600">4.9★</div>
-                  <div className="text-xs text-gray-600">Rating</div>
-                </div>
-              </div>
-
-              {/* Testimonial */}
-              <div className="bg-blue-50 rounded-lg p-3 text-center">
-                <p className="text-sm italic text-gray-700 mb-1">
-                  "Crystal clear calls at half the price of Skype. Amazing
-                  service!"
-                </p>
-                <p className="text-xs font-medium text-blue-600">
-                  - Sarah T., Verified User
-                </p>
-              </div>
-            </div>
-
-            {/* Collapsible Sections */}
-            <div className="space-y-3 mb-6">
-              <details className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <summary className="p-3 font-medium cursor-pointer">
-                  How does it work?
-                </summary>
-                <div className="p-3 pt-0 text-sm text-gray-600">
-                  Enter any phone number, tap call, and connect instantly. Your
-                  first call is free, and subsequent calls start at just
-                  $0.03/minute.
-                </div>
-              </details>
-
-              <details className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <summary className="p-3 font-medium cursor-pointer">
-                  Why choose Zkypee over Skype?
-                </summary>
-                <div className="p-3 pt-0 text-sm text-gray-600">
-                  Zkypee offers up to 50% lower rates, no subscription required,
-                  HD call quality, and you can even transfer your existing Skype
-                  credits.
-                </div>
-              </details>
-
-              <details className="bg-white rounded-lg shadow-sm border border-gray-200">
-                <summary className="p-3 font-medium cursor-pointer">
-                  Is my information secure?
-                </summary>
-                <div className="p-3 pt-0 text-sm text-gray-600">
-                  Yes! All calls are encrypted end-to-end, and we never share
-                  your personal information with third parties.
-                </div>
-              </details>
-            </div>
-
-            {/* Secondary CTA */}
-            <div className="mb-20">
-              <Link
-                href="/transfer"
-                className="border border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg text-center font-medium transition-colors flex items-center justify-center w-full"
-              >
-                <svg
-                  className="w-5 h-5 mr-2"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8z" />
-                  <path d="M12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z" />
-                </svg>
-                Transfer Skype Credits & Get 10% Bonus
-              </Link>
-            </div>
-          </main>
+    <main className="min-h-screen bg-gradient-to-b from-[#00AFF0] to-[#0078D4]">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0078D4] to-[#00AFF0] opacity-90"></div>
         </div>
-
-        {/* Floating Action Button for calling - mobile only */}
-        <div className="fixed bottom-6 right-6 z-50">
-          <Link
-            href="/dial"
-            className="bg-green-600 hover:bg-green-700 text-white w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-colors"
-          >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
+          <div className="text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="mb-8 sm:mb-12"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+              <h1 className="text-4xl sm:text-6xl font-bold text-white mb-6">
+                Stay Connected with Zkypee
+              </h1>
+              <p className="text-xl sm:text-2xl text-white/90 max-w-3xl mx-auto">
+                Free video calls, messaging, and voice chat for everyone. Just like the good old days.
+              </p>
+            </motion.div>
+
+            {/* Feature Cards */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-6xl mx-auto mb-12"
+            >
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-white">
+                <div className="rounded-full bg-white/20 w-12 h-12 flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Video Calls</h3>
+                <p className="text-white/80">Crystal clear HD video calls with friends and family</p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-white">
+                <div className="rounded-full bg-white/20 w-12 h-12 flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Instant Chat</h3>
+                <p className="text-white/80">Send messages, emojis, and share files instantly</p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 text-white">
+                <div className="rounded-full bg-white/20 w-12 h-12 flex items-center justify-center mb-4 mx-auto">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Voice Calls</h3>
+                <p className="text-white/80">High-quality voice calls over the internet</p>
+              </div>
+            </motion.div>
+
+            {/* CTAs */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center max-w-2xl mx-auto"
+            >
+              <div className="flex-1 flex flex-col items-center">
+                <Link
+                  href="/buy-number"
+                  className="w-full bg-white text-[#00AFF0] px-8 py-4 rounded-full text-lg font-semibold hover:bg-opacity-90 transition-colors shadow-lg hover:shadow-xl flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 3h5m0 0v5m0-5l-6 6M5 3a2 2 0 00-2 2v1c0 8.284 6.716 15 15 15h1a2 2 0 002-2v-3.28a1 1 0 00-.684-.948l-4.493-1.498a1 1 0 00-1.21.502l-1.13 2.257a11.042 11.042 0 01-5.516-5.517l2.257-1.128a1 1 0 00.502-1.21L9.228 3.683A1 1 0 008.279 3H5z" />
+                  </svg>
+                  Private Number
+                </Link>
+                <p className="text-white/80 text-sm mt-3 px-4 text-center">
+                  Get your own permanent number to send/receive texts and calls from any device
+                </p>
+              </div>
+              
+              <div className="flex-1 flex flex-col items-center">
+                <Link
+                  href="/dial"
+                  className="w-full bg-white/10 backdrop-blur-sm text-white px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/20 transition-colors flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  Public Number
+                </Link>
+                <p className="text-white/80 text-sm mt-3 px-4 text-center">
+                  Make anonymous calls from a temporary number without revealing your identity
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+
+      {/* Business Features Section */}
+      <section className="py-24 bg-white/5 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-bold text-white mb-4">
+              Connect with customers effortlessly
+            </h2>
+            <p className="text-xl text-white/80 max-w-3xl mx-auto">
+              Zkypee is a powerful business communication system in an intuitive app that
+              works across all your existing devices.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-white"
+            >
+              <h3 className="text-3xl font-bold mb-6">Get numbers for any use case</h3>
+              <p className="text-lg text-white/80 mb-6">
+                Organize conversations by assigning numbers to your specific business and
+                customer needs.
+              </p>
+              <p className="text-lg text-white/80 mb-8">
+                Set up new local US and Canadian phone numbers, along with North American toll-free
+                numbers in minutes.
+              </p>
+              <Link
+                href="/numbers"
+                className="inline-flex items-center bg-white text-[#00AFF0] px-6 py-3 rounded-full text-lg font-medium hover:bg-opacity-90 transition-colors"
+              >
+                Get your number
+                <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="relative h-[600px] rounded-lg overflow-hidden"
+            >
+              <Image
+                src="/mockup.png"
+                alt="Zkypee Interface"
+                fill
+                className="object-cover rounded-lg"
               />
-            </svg>
-          </Link>
+            </motion.div>
+          </div>
         </div>
-      </div>
+      </section>
 
-      {/* Desktop Design - Only visible on medium screens and up */}
-      <div className="hidden md:block">
-        <div className="min-h-screen bg-gradient-to-b from-white to-blue-50 pb-16 md:pb-0">
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 md:py-16">
-            <div className="flex flex-col lg:flex-row items-center justify-center lg:items-start lg:space-x-12">
-              {/* Left content area */}
-              <div className="w-full lg:w-1/2 mb-8 sm:mb-12 lg:mb-0 text-center sm:text-center lg:text-left space-y-6 sm:space-y-8 mx-auto">
-                {/* Headline with more direct value proposition */}
-                <div className="space-y-2 sm:space-y-4">
-                  <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-medium inline-block mb-2">
-                    Skype Alternative
-                  </div>
-                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">
-                    <span className="text-blue-600">Zkypee</span> - Call Anyone,
-                    Anywhere
-                  </h1>
-                  <h2 className="text-lg sm:text-xl font-medium text-gray-700">
-                    Save up to 50% on international calls
-                  </h2>
-                  <p className="text-base sm:text-lg text-gray-600 max-w-xl mx-auto lg:mx-0">
-                    Everything you loved about Skype but better - with
-                    industry-leading rates starting at just $0.03/minute.
-                  </p>
+      {/* AI Features Section */}
+      <section className="py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-bold text-white mb-4">
+              Save time with AI
+            </h2>
+            <p className="text-xl text-white/80 max-w-3xl mx-auto">
+              Give your workflow a boost with Zkypee AI
+            </p>
+          </motion.div>
 
-                  {/* Quick value badges */}
-                  <div className="flex flex-wrap justify-center lg:justify-start gap-2 mt-2">
-                    <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
-                      <svg
-                        className="w-3 h-3 mr-1"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      No Subscription
-                    </span>
-                    <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
-                      <svg
-                        className="w-3 h-3 mr-1"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      HD Quality
-                    </span>
-                    <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs font-medium inline-flex items-center">
-                      <svg
-                        className="w-3 h-3 mr-1"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Keep Skype Credits
-                    </span>
-                  </div>
-
-                  {/* Columbia University Backing - Desktop */}
-                  <div className="hidden lg:flex items-center justify-start mt-6 bg-gray-50 border border-gray-200 rounded-lg p-3">
-                    <Image
-                      src="/images/cc.png"
-                      alt="Columbia University Logo"
-                      width={40}
-                      height={40}
-                      className="mr-3"
-                    />
-                    <p className="text-sm text-gray-700">
-                      Backed by{" "}
-                      <span className="font-semibold">Columbia University</span>
-                    </p>
+          <div className="grid md:grid-cols-2 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="bg-white/10 backdrop-blur-sm rounded-xl p-8"
+            >
+              <h3 className="text-2xl font-bold text-white mb-4">Call summaries and next steps</h3>
+              <p className="text-white/80 mb-6">
+                Zkypee AI automatically summarizes calls, then intelligently suggests next steps.
+              </p>
+              <div className="bg-black/20 rounded-lg p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-10 h-10 rounded-full bg-white/10" />
+                  <div>
+                    <div className="text-white/60 text-sm">Call ended</div>
+                    <div className="text-white">You answered • 9:30</div>
                   </div>
                 </div>
-
-                {/* Enhanced pricing section */}
-                <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-4 w-full max-w-xl mx-auto lg:mx-0 my-6">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="flex items-center mb-2">
-                      <span className="text-3xl font-bold text-blue-600">
-                        $0.03
-                      </span>
-                      <span className="text-gray-600 ml-1">/minute</span>
-                    </div>
-
-                    <div className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium mb-2">
-                      Save up to 50% vs Skype
-                    </div>
-
-                    <div className="flex items-center justify-center space-x-4 w-full mt-2">
-                      <div className="flex flex-col items-center">
-                        <div className="text-sm font-medium text-gray-500">
-                          Zkypee
-                        </div>
-                        <div className="text-lg font-bold text-blue-600">
-                          $0.03
-                        </div>
-                      </div>
-
-                      <div className="h-8 border-r border-gray-200"></div>
-
-                      <div className="flex flex-col items-center">
-                        <div className="text-sm font-medium text-gray-500">
-                          Skype
-                        </div>
-                        <div className="text-lg font-bold text-gray-600 line-through">
-                          $0.06
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 w-full">
-                      <Link
-                        href="/dial"
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg text-center font-medium shadow-sm transition-colors flex items-center justify-center w-full"
-                      >
-                        <svg
-                          className="w-5 h-5 mr-2"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                          />
-                        </svg>
-                        Try calling for free now
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Secondary CTA */}
-                <div className="mb-6">
-                  <Link
-                    href="/transfer"
-                    className="border border-blue-200 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg text-center font-medium transition-colors flex items-center justify-center w-full"
-                  >
-                    <svg
-                      className="w-5 h-5 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8z" />
-                      <path d="M12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z" />
-                    </svg>
-                    Transfer Skype Credits & Get 10% Bonus
-                  </Link>
+                <div className="bg-white/10 rounded-lg p-4 text-white/80">
+                  <h4 className="font-medium mb-2">Call Summary</h4>
+                  <ul className="space-y-2 text-sm">
+                    <li>• Discussed project timeline and deliverables</li>
+                    <li>• Client requested additional features</li>
+                    <li>• Follow-up meeting scheduled for next week</li>
+                  </ul>
                 </div>
               </div>
+            </motion.div>
 
-              {/* Right side - Phone mockup */}
-              <div className="w-full lg:w-1/2 flex justify-center mt-6 lg:mt-0">
-                <div className="relative scale-75 sm:scale-90 md:scale-100">
-                  {/* Phone frame - simplified */}
-                  <div className="relative z-10 bg-gradient-to-b from-gray-400 to-gray-300 rounded-[45px] p-[3px] shadow-lg">
-                    {/* Inner frame */}
-                    <div className="relative bg-black rounded-[42px] overflow-hidden w-[280px] sm:w-[320px] h-[560px] sm:h-[640px] border-[2px] border-gray-800">
-                      {/* Dynamic Island - simplified */}
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[100px] h-[30px] bg-black rounded-b-3xl z-20 mt-2"></div>
-
-                      {/* Status bar - simplified */}
-                      <div className="h-12 w-full bg-black text-white flex items-center justify-between px-6 pt-4">
-                        <div className="text-xs font-medium">9:41</div>
-                        <div className="flex space-x-1.5">
-                          <svg
-                            className="w-3 h-3"
-                            viewBox="0 0 24 24"
-                            fill="white"
-                          >
-                            <path d="M12.01 21.49L23.64 7c-.45-.34-4.93-4-11.64-4C5.28 3 .81 6.66.36 7l11.63 14.49.01.01.01-.01z" />
-                          </svg>
-                          <div className="w-4 relative">
-                            <div className="absolute inset-y-0 left-0 w-3 h-2 mt-0.5 bg-white rounded-sm"></div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Phone content */}
-                      <div className="bg-white h-full pt-12 pb-4 px-4">
-                        <PhoneContent />
-                      </div>
-
-                      {/* Home indicator */}
-                      <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-24 h-1 bg-white rounded-full"></div>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="bg-white/10 backdrop-blur-sm rounded-xl p-8"
+            >
+              <h3 className="text-2xl font-bold text-white mb-4">Automatic call transcripts</h3>
+              <p className="text-white/80 mb-6">
+                Read conversations in detail and easily reference or find info with time-stamps.
+              </p>
+              <div className="bg-black/20 rounded-lg p-6">
+                <div className="space-y-4">
+                  <div className="flex items-start gap-2">
+                    <div className="text-white/60 text-sm w-12">0:01</div>
+                    <div className="bg-white/10 rounded-lg p-3 text-white flex-1">
+                      Hello, this is John speaking.
                     </div>
                   </div>
-
-                  {/* Simplified decorative element - hidden on very small screens */}
-                  <div className="absolute -bottom-5 -right-5 w-32 h-32 bg-blue-50 rounded-full opacity-40 blur-md hidden xs:block"></div>
+                  <div className="flex items-start gap-2">
+                    <div className="text-white/60 text-sm w-12">0:05</div>
+                    <div className="bg-white/10 rounded-lg p-3 text-white flex-1">
+                      Hi John, thanks for taking my call.
+                    </div>
+                  </div>
                 </div>
               </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonial Section */}
+      <section className="py-24 bg-black/10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="w-20 h-20 rounded-full overflow-hidden mx-auto mb-6">
+              <Image
+                src="/testimonial-avatar.jpg"
+                alt="Testimonial"
+                width={80}
+                height={80}
+                className="object-cover"
+              />
             </div>
-          </main>
+            <blockquote className="text-2xl text-white mb-6">
+              "Zkypee was truly my first assistant. The AI feature of transcribing calls,
+              creating a summary and to-do list, is next-level amazing."
+            </blockquote>
+            <div className="text-white/80">
+              <div className="font-medium">Sarah Johnson</div>
+              <div className="text-sm">Business Development Manager</div>
+            </div>
+          </motion.div>
         </div>
-      </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-[#0078D4] py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h4 className="text-white font-semibold mb-4">Product</h4>
+              <ul className="space-y-2">
+                <li><Link href="/features" className="text-white/70 hover:text-white">Features</Link></li>
+                <li><Link href="/pricing" className="text-white/70 hover:text-white">Pricing</Link></li>
+                <li><Link href="/enterprise" className="text-white/70 hover:text-white">Enterprise</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Company</h4>
+              <ul className="space-y-2">
+                <li><Link href="/about" className="text-white/70 hover:text-white">About</Link></li>
+                <li><Link href="/careers" className="text-white/70 hover:text-white">Careers</Link></li>
+                <li><Link href="/blog" className="text-white/70 hover:text-white">Blog</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Resources</h4>
+              <ul className="space-y-2">
+                <li><Link href="/help" className="text-white/70 hover:text-white">Help Center</Link></li>
+                <li><Link href="/api" className="text-white/70 hover:text-white">API</Link></li>
+                <li><Link href="/status" className="text-white/70 hover:text-white">Status</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-semibold mb-4">Legal</h4>
+              <ul className="space-y-2">
+                <li><Link href="/privacy" className="text-white/70 hover:text-white">Privacy</Link></li>
+                <li><Link href="/terms" className="text-white/70 hover:text-white">Terms</Link></li>
+                <li><Link href="/security" className="text-white/70 hover:text-white">Security</Link></li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center mb-4 md:mb-0">
+              <div className="text-white text-2xl font-bold mr-2">
+                Z
+              </div>
+              <span className="text-white/70">© 2024 Zkypee. All rights reserved.</span>
+            </div>
+            <div className="flex space-x-6">
+              <a href="#" className="text-white/70 hover:text-white">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
+                </svg>
+              </a>
+              <a href="#" className="text-white/70 hover:text-white">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" />
+                </svg>
+              </a>
+              <a href="#" className="text-white/70 hover:text-white">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path fillRule="evenodd" d="M12 2c5.514 0 10 4.486 10 10s-4.486 10-10 10-10-4.486-10-10 4.486-10 10-10zm0-2c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 8c0 .557-.447 1.008-1 1.008s-1-.45-1-1.008c0-.557.447-1.008 1-1.008s1 .452 1 1.008zm0 2h-2v6h2v-6zm3 0h-2v6h2v-2.861c0-1.722 2.002-1.881 2.002 0v2.861h1.998v-3.359c0-3.284-3.128-3.164-4-1.548v-1.093z" clipRule="evenodd" />
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

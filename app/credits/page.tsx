@@ -1,154 +1,34 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React from 'react';
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { CREDIT_PACKAGES, COST_PER_MINUTE } from "@/lib/stripe";
-import {
-  FaCheck,
-  FaInfoCircle,
-  FaQuestionCircle,
-  FaChevronDown,
-  FaChevronUp,
-} from "react-icons/fa";
+import { CREDIT_PACKAGES } from "@/lib/stripe";
 import { useAuth } from "@/contexts/AuthContext";
 import Auth from "@/components/Auth";
-import { motion, AnimatePresence } from "framer-motion";
-import { supabase } from "@/lib/supabase";
+import { motion } from "framer-motion";
 
-// Declare a window property for session refresh tracking
-declare global {
-  interface Window {
-    sessionRefreshed?: boolean;
-  }
-}
-
-export default function CreditsPage() {
-  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+export default function BuyCreditsPage() {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-  const [showAuth, setShowAuth] = useState(false);
+  const { user } = useAuth();
   const router = useRouter();
-
-  // Track if we've already loaded credits to prevent duplicate calls
-  const hasLoadedCredits = useRef(false);
-
-  // Use the auth context
-  const { session, user, loading: authLoading } = useAuth();
-  const isAuthenticated = !!user;
-
-  // Clean up the session tracking when the component unmounts
-  useEffect(() => {
-    return () => {
-      // Reset the session refresh flag when component unmounts
-      if (typeof window !== "undefined") {
-        window.sessionRefreshed = false;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const checkAuthAndFetchBalance = async () => {
-      if (authLoading) {
-        console.log("Auth loading, waiting...");
-        return; // Wait for auth to finish loading
-      }
-
-      if (isAuthenticated && user && !hasLoadedCredits.current) {
-        console.log("User is authenticated, fetching credit balance");
-        await fetchCreditBalance();
-        hasLoadedCredits.current = true;
-      } else if (!isAuthenticated) {
-        console.log("User is not authenticated", {
-          isAuthenticated,
-          hasUser: !!user,
-        });
-        setIsLoading(false);
-        setError("Please sign in to view your credits");
-        // We'll show the auth UI
-        setShowAuth(true);
-      } else {
-        console.log("Credits already loaded, skipping fetch");
-      }
-    };
-
-    checkAuthAndFetchBalance();
-  }, [isAuthenticated, user, authLoading]);
-
-  const fetchCreditBalance = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Skip fetching if not authenticated
-      if (!session || !user) {
-        console.log("No session or user available, skipping fetch");
-        setIsLoading(false);
-        setError("Please sign in to view your credits");
-        return;
-      }
-
-      console.log("Fetching credit balance directly from Supabase");
-
-      // Directly query the users table in Supabase
-      const { data, error } = await supabase
-        .from('users')
-        .select('credit_balance')
-        .eq('id', user.id)
-        .single();
-      
-      if (error) {
-        console.error("Error fetching credit balance from Supabase:", error);
-        throw new Error(`Failed to fetch credit balance: ${error.message}`);
-      }
-      
-      // If user exists, use their credit balance, otherwise default to 0
-      if (data) {
-        console.log("Credit balance fetched successfully:", data.credit_balance);
-        setCreditBalance(data.credit_balance || 0);
-      } else {
-        console.log("User not found in database, setting credit balance to 0");
-        setCreditBalance(0);
-        
-        // Create user with 0 credits if they don't exist
-        const { error: insertError } = await supabase
-          .from('users')
-          .insert([{ id: user.id, credit_balance: 0 }]);
-          
-        if (insertError) {
-          console.error("Error creating user:", insertError);
-        }
-      }
-    } catch (err) {
-      console.error("Error in fetchCreditBalance:", err);
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handlePurchase = async (packageId: string) => {
     try {
       setIsProcessing(true);
       setSelectedPackage(packageId);
-      setError(null);
 
-      if (!session) {
-        setShowAuth(true);
+      if (!user) {
+        setError("Please sign in to purchase credits");
         return;
       }
 
-      // Create checkout session with auth token in header
       const response = await fetch("/api/credits/checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ packageId }),
       });
@@ -159,7 +39,6 @@ export default function CreditsPage() {
         throw new Error(data.error || "Failed to create checkout session");
       }
 
-      // Redirect to Stripe Checkout
       if (data.url) {
         window.location.href = data.url;
       } else {
@@ -167,209 +46,89 @@ export default function CreditsPage() {
       }
     } catch (err) {
       console.error("Error creating checkout session:", err);
-      setError(
-        err instanceof Error ? err.message : "An unknown error occurred"
-      );
+      setError(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
       setIsProcessing(false);
       setSelectedPackage(null);
     }
   };
 
-  const toggleFaq = (index: number) => {
-    if (openFaqIndex === index) {
-      setOpenFaqIndex(null);
-    } else {
-      setOpenFaqIndex(index);
-    }
-  };
-
-  const faqs = [
-    {
-      question: "How do credits work?",
-      answer:
-        "Credits are used to make phone calls through our service. Each minute of call time costs a specific amount of credits. You can purchase credits in packages, and they will be added to your account balance.",
-    },
-    {
-      question: "How much do calls cost?",
-      answer: `Calls cost ${COST_PER_MINUTE} credits per minute. For example, a 10-minute call would cost ${
-        10 * COST_PER_MINUTE
-      } credits.`,
-    },
-    {
-      question: "Do credits expire?",
-      answer:
-        "No, your credits do not expire and will remain in your account until used.",
-    },
-    {
-      question: "Can I get a refund for unused credits?",
-      answer:
-        "We do not offer refunds for purchased credits. However, since credits don't expire, you can use them at any time.",
-    },
-    {
-      question: "How do I check my credit balance?",
-      answer:
-        "Your current credit balance is displayed at the top of this page when you're logged in. You can also view your balance in the Credit Dashboard.",
-    },
-  ];
-
-  const minutesRemaining =
-    creditBalance !== null
-      ? parseFloat((creditBalance / COST_PER_MINUTE).toFixed(2))
-      : 0;
-
-  // Show login message if not authenticated
-  const renderAuthMessage = () => {
-    if (!isAuthenticated && !authLoading) {
-      return (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-yellow-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-yellow-700">
-                You need to be signed in to view and manage your credits.
-                <button
-                  onClick={() => setShowAuth(true)}
-                  className="ml-2 font-medium underline text-yellow-700 hover:text-yellow-600"
-                >
-                  Sign in
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  const renderErrorMessage = () => {
-    if (error) {
-      return (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-red-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#00AFF0] to-[#0085B3] flex flex-col items-center justify-center p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="max-w-md w-full"
+        >
+          <h1 className="text-3xl font-bold text-center text-white mb-8">
+            Sign in to Purchase Credits
+          </h1>
+          <Auth />
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="container mx-auto p-4 sm:p-6 flex-1">
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-            Credit Packages
+    <div className="min-h-screen bg-gradient-to-b from-[#00AFF0] to-[#0085B3]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            Buy Credits
           </h1>
-          <p className="text-gray-600 mb-6">
-            Purchase credits to make phone calls through our service
+          <p className="text-xl text-white/80">
+            Choose the package that best suits your needs
           </p>
+        </div>
 
-          {/* Authentication message */}
-          {renderAuthMessage()}
-
-          {/* Error message */}
-          {renderErrorMessage()}
-
-          {/* Credit balance for authenticated users */}
-          {isAuthenticated && !isLoading && creditBalance !== null && (
-            <div className="bg-blue-50 p-4 rounded-lg mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-blue-800">
-                    Your Credit Balance
-                  </h2>
-                  <p className="text-2xl font-bold text-blue-900">
-                    {creditBalance} credits
-                  </p>
-                  <p className="text-sm text-blue-700">
-                    Approximately {minutesRemaining} minutes of call time
-                  </p>
-                </div>
-                <div className="mt-3 sm:mt-0"></div>
-              </div>
-            </div>
-          )}
-
-          {/* Loading state */}
-          {isLoading && (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-              <span className="ml-3 text-gray-600">Loading...</span>
-            </div>
-          )}
-
-          {/* Credit packages */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="space-y-6">
             {CREDIT_PACKAGES.map((pkg) => (
-              <div
+              <motion.div
                 key={pkg.id}
-                className="border rounded-lg shadow-sm hover:shadow-md transition-shadow p-5"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.02 }}
+                className="bg-white/10 backdrop-blur-md rounded-xl p-6 cursor-pointer"
+                onClick={() => handlePurchase(pkg.id)}
               >
-                <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                  {pkg.name}
-                </h3>
-                <p className="text-3xl font-bold text-blue-600 mb-3">
-                  ${pkg.amount}
-                </p>
-                <p className="text-gray-600 mb-4">{pkg.credits} credits</p>
-                <ul className="mb-6 space-y-2">
-                  <li className="flex items-start">
-                    <FaCheck className="text-green-500 mt-1 mr-2 flex-shrink-0" />
-                    <span className="text-sm text-gray-600">
-                      Approximately {Math.round(pkg.credits / COST_PER_MINUTE)}{" "}
-                      minutes of call time
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <FaCheck className="text-green-500 mt-1 mr-2 flex-shrink-0" />
-                    <span className="text-sm text-gray-600">
-                      Credits never expire
-                    </span>
-                  </li>
-                </ul>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-2">
+                      {pkg.credits} Credits
+                    </h3>
+                    <p className="text-white/80">
+                      {pkg.credits === 100
+                        ? "Perfect for occasional calls"
+                        : pkg.credits === 300
+                        ? "Most popular option"
+                        : "Best value for heavy users"}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-white">
+                      ${pkg.amount}
+                    </div>
+                    <div className="text-white/60 text-sm">
+                      ${(pkg.amount / pkg.credits).toFixed(2)}/credit
+                    </div>
+                  </div>
+                </div>
+
                 <button
-                  onClick={() => handlePurchase(pkg.id)}
-                  disabled={isProcessing && selectedPackage === pkg.id}
-                  className={`w-full py-2 rounded-md font-medium transition-colors ${
+                  className={`mt-4 w-full bg-white text-[#00AFF0] py-3 rounded-lg font-medium transition-all ${
                     isProcessing && selectedPackage === pkg.id
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-blue-500 hover:bg-blue-600 text-white"
+                      ? "opacity-75 cursor-not-allowed"
+                      : "hover:bg-opacity-90"
                   }`}
+                  disabled={isProcessing && selectedPackage === pkg.id}
                 >
                   {isProcessing && selectedPackage === pkg.id ? (
-                    <span className="flex items-center justify-center">
+                    <div className="flex items-center justify-center">
                       <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-700"
+                        className="animate-spin -ml-1 mr-3 h-5 w-5"
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"
                         viewBox="0 0 24 24"
@@ -389,97 +148,69 @@ export default function CreditsPage() {
                         ></path>
                       </svg>
                       Processing...
-                    </span>
+                    </div>
                   ) : (
-                    "Buy Now"
+                    "Purchase Now"
                   )}
                 </button>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
 
-        {/* FAQ Section */}
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-6">
-            Frequently Asked Questions
-          </h2>
-          <div className="space-y-4">
-            {faqs.map((faq, index) => (
-              <div
-                key={index}
-                className="border rounded-lg overflow-hidden transition-shadow hover:shadow-sm"
-              >
-                <button
-                  onClick={() => toggleFaq(index)}
-                  className="w-full p-4 text-left flex justify-between items-center focus:outline-none"
-                >
-                  <span className="font-medium text-gray-800">
-                    {faq.question}
-                  </span>
-                  {openFaqIndex === index ? (
-                    <FaChevronUp className="text-gray-500" />
-                  ) : (
-                    <FaChevronDown className="text-gray-500" />
-                  )}
-                </button>
-                {openFaqIndex === index && (
-                  <div className="p-4 bg-gray-50 border-t">
-                    <p className="text-gray-700">{faq.answer}</p>
-                  </div>
-                )}
+          {error && (
+            <div className="mt-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-white text-center">{error}</p>
+            </div>
+          )}
+
+          <div className="mt-12 bg-white/10 backdrop-blur-md rounded-xl p-6">
+            <h2 className="text-xl font-bold text-white mb-4">
+              Why Buy Credits?
+            </h2>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div>
+                <div className="text-white mb-2">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-1">
+                  Cost-Effective
+                </h3>
+                <p className="text-white/80">
+                  Pay only for what you use with our flexible credit system
+                </p>
               </div>
-            ))}
+              <div>
+                <div className="text-white mb-2">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-1">
+                  Instant Access
+                </h3>
+                <p className="text-white/80">
+                  Credits are added to your account immediately after purchase
+                </p>
+              </div>
+              <div>
+                <div className="text-white mb-2">
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-1">
+                  Secure Payments
+                </h3>
+                <p className="text-white/80">
+                  All transactions are processed securely through Stripe
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Auth Modal */}
-      <AnimatePresence>
-        {showAuth && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-            onClick={() => setShowAuth(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="relative"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                className="absolute top-2 right-2 text-gray-500 hover:text-gray-700 z-10"
-                onClick={() => setShowAuth(false)}
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-              <Auth
-                onSuccess={() => {
-                  setShowAuth(false);
-                  fetchCreditBalance();
-                }}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

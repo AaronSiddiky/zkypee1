@@ -8,7 +8,7 @@ const VoiceResponse = twilio.twiml.VoiceResponse;
 // Handle TwiML for voice applications
 export async function POST(request: Request) {
   try {
-    console.log("[Voice Route] Received POST request");
+    console.log("🔄 [Voice Route] Received POST request");
     
     const data = await request.formData();
     const toValue = data.get("To");
@@ -19,7 +19,14 @@ export async function POST(request: Request) {
     data.forEach((value, key) => {
       formDataObj[key] = value;
     });
-    console.log("[Voice Route] Incoming form data:", formDataObj);
+    console.log("🔄 [Voice Route] Incoming form data:", formDataObj);
+    
+    // Dump request headers
+    const headers: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    console.log("🔄 [Voice Route] Request headers:", headers);
 
     // Extract OutgoingNumber from formData if available
     const outgoingNumberValue = data.get("OutgoingNumber");
@@ -47,22 +54,33 @@ export async function POST(request: Request) {
     console.log("[Voice Route] To:", to);
     console.log("[Voice Route] OutgoingNumber:", outgoingNumber);
 
-    const host = request.headers.get("host") || "localhost:3000";
+    const host = request.headers.get("host") || "localhost:3001";
     const protocol = host.includes("localhost") ? "http" : "https";
-    console.log("[Voice Route] Host:", host, "Protocol:", protocol);
+    console.log("🔄 [Voice Route] Host:", host, "Protocol:", protocol);
+    
+    // Force ngrok URL if available
+    const ngrokUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    const forcedHost = ngrokUrl ? new URL(ngrokUrl).host : host;
+    const forcedProtocol = ngrokUrl ? "https" : protocol;
+    
+    console.log("🔄 [Voice Route] Forced host:", forcedHost, "Forced protocol:", forcedProtocol);
 
+    // CRITICAL: Ensure we have a valid caller ID for Twilio client calls
     // Final safety check to never use [object Object] as callerId
     if (
       !outgoingNumber ||
       outgoingNumber === "[object Object]" ||
-      outgoingNumber.toString() === "[object Object]"
+      outgoingNumber.toString() === "[object Object]" ||
+      !outgoingNumber.toString().startsWith("+")
     ) {
       console.warn(
-        "[Voice Route] Invalid outgoingNumber detected, using default instead:",
+        "[Voice Route] ⚠️ Invalid outgoingNumber detected, using default instead:",
         outgoingNumber
       );
       outgoingNumber = DEFAULT_TWILIO_PHONE_NUMBER;
     }
+
+    console.log("[Voice Route] 📱 Final callerId being used:", outgoingNumber);
 
     const twiml = new VoiceResponse();
 
@@ -76,7 +94,7 @@ export async function POST(request: Request) {
         answerOnBridge: true,
         record: "record-from-answer",
         timeout: 30,
-        action: `${protocol}://${host}/api/twilio/call-status`,
+        action: `${forcedProtocol}://${forcedHost}/api/twilio/call-status`,
         method: "POST",
       });
 
@@ -84,7 +102,7 @@ export async function POST(request: Request) {
       dial.number(
         {
           statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
-          statusCallback: `${protocol}://${host}/api/twilio/call-status`,
+          statusCallback: `${forcedProtocol}://${forcedHost}/api/twilio/call-status`,
           statusCallbackMethod: "POST",
         },
         to

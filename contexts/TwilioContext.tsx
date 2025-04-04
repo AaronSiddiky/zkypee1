@@ -1245,15 +1245,27 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
   const makeCall = async (phoneNumber: string): Promise<boolean> => {
     try {
       resetError();
+      
+      console.log("⭐ makeCall initiated to:", phoneNumber);
+      console.log("⭐ Current environment:", {
+        baseUrl: process.env.NEXT_PUBLIC_BASE_URL,
+        host: typeof window !== "undefined" ? window.location.host : "unknown",
+        origin: typeof window !== "undefined" ? window.location.origin : "unknown",
+      });
+
+      // IMPORTANT: Always use the default Twilio phone number as the caller ID
+      // This is required for client-to-phone calls
+      const defaultTwilioNumber = "+18574129969"; // Your verified Twilio number from .env
+      console.log(`⭐ Using verified Twilio number as caller ID: ${defaultTwilioNumber}`);
 
       // Get the selected outgoing number from localStorage if available
       const selectedOutgoingNumber =
         typeof window !== "undefined"
-          ? localStorage.getItem("selectedOutgoingNumber")
-          : null;
+          ? localStorage.getItem("selectedOutgoingNumber") || defaultTwilioNumber
+          : defaultTwilioNumber;
 
       if (selectedOutgoingNumber) {
-        console.log(`Using custom outgoing number: ${selectedOutgoingNumber}`);
+        console.log(`⭐ Using custom outgoing number: ${selectedOutgoingNumber}`);
       }
 
       if (isTrialMode) {
@@ -1348,6 +1360,30 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
       setStatus(CallStatus.CONNECTING);
       setCallTo(phoneNumber);
 
+      // Validate the outgoing number to ensure it's a proper string phone number
+      let validatedOutgoingNumber: string | null = null;
+      if (selectedOutgoingNumber) {
+        // Convert to string and check if it's a valid format
+        const numberStr = selectedOutgoingNumber.toString();
+        if (
+          numberStr !== "[object Object]" &&
+          /^\+?[1-9]\d{1,14}$/.test(numberStr)
+        ) {
+          validatedOutgoingNumber = numberStr;
+          console.log(
+            `⭐ Using validated outgoing number: ${validatedOutgoingNumber}`
+          );
+        } else {
+          console.warn(
+            `Invalid outgoing number format: ${numberStr}, using default number instead`
+          );
+          validatedOutgoingNumber = "+18574129969"; // Fall back to your Twilio number
+        }
+      } else {
+        // Always ensure we have a valid outgoing number
+        validatedOutgoingNumber = "+18574129969";
+      }
+
       // Make the call with token suppression
       return await suppressTwilioTokenLogs(async () => {
         // Make the call
@@ -1355,33 +1391,11 @@ export function TwilioProvider({ children }: { children: React.ReactNode }) {
           throw new Error("Device not initialized");
         }
 
-        // Validate the outgoing number to ensure it's a proper string phone number
-        let validatedOutgoingNumber: string | null = null;
-        if (selectedOutgoingNumber) {
-          // Convert to string and check if it's a valid format
-          const numberStr = selectedOutgoingNumber.toString();
-          if (
-            numberStr !== "[object Object]" &&
-            /^\+?[1-9]\d{1,14}$/.test(numberStr)
-          ) {
-            validatedOutgoingNumber = numberStr;
-            console.log(
-              `Using validated outgoing number: ${validatedOutgoingNumber}`
-            );
-          } else {
-            console.warn(
-              `Invalid outgoing number format: ${numberStr}, not using it`
-            );
-          }
-        }
-
         const call = await device.connect({
           params: {
             To: phoneNumber,
-            // Pass the custom outgoing number if available and validated
-            ...(validatedOutgoingNumber
-              ? { OutgoingNumber: validatedOutgoingNumber }
-              : {}),
+            // Always provide a valid OutgoingNumber for client calls
+            OutgoingNumber: validatedOutgoingNumber
           },
         });
 

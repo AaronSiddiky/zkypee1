@@ -1,112 +1,62 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
-interface CreditBalanceProps {
-  showBuyButton?: boolean;
-  className?: string;
-}
-
-export default function CreditBalance({
-  showBuyButton = false,
-  className = "",
-}: CreditBalanceProps) {
+export default function CreditBalance() {
+  const { user } = useAuth();
   const [creditBalance, setCreditBalance] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { session, user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
 
+  // Fetch credit balance from Supabase when user is available
   useEffect(() => {
     const fetchCreditBalance = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        setIsLoading(true);
-        setError(null);
-
-        // Skip fetching if not authenticated
-        if (!session || !user) {
-          console.log("No session or user available, skipping fetch");
-          setIsLoading(false);
-          setError("Please sign in to view credits");
-          return;
-        }
-
-        console.log("Fetching credit balance directly from Supabase");
-
-        // Directly query the users table in Supabase
+        console.log("Fetching credit balance for user:", user.id);
         const { data, error } = await supabase
           .from('users')
           .select('credit_balance')
           .eq('id', user.id)
-          .maybeSingle();
+          .single();
         
         if (error) {
-          console.error("Error fetching credit balance from Supabase:", error);
-          throw new Error(`Failed to fetch credit balance: ${error.message}`);
+          console.error("Error fetching credit balance:", error);
+          return;
         }
-        
-        // If user exists, use their credit balance, otherwise create the user
+
         if (data) {
-          console.log("Credit balance fetched successfully:", data.credit_balance);
+          console.log("Credit balance fetched:", data.credit_balance);
           setCreditBalance(data.credit_balance || 0);
         } else {
-          console.log("User not found in database, creating user with default credits");
-          
-          // Default credits for new users
-          const defaultCredits = 5.00;
-          
-          // Create user with default credits
-          const { error: insertError } = await supabase
-            .from('users')
-            .insert([{ id: user.id, credit_balance: defaultCredits }]);
-            
-          if (insertError) {
-            console.error("Error creating user:", insertError);
-            // Still show the default credits even if insert fails
-          }
-          
-          setCreditBalance(defaultCredits);
+          // If no data, use default value
+          setCreditBalance(0);
         }
       } catch (err) {
-        console.error("Error in fetchCreditBalance:", err);
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
-        );
+        console.error("Failed to fetch credit balance:", err);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
     fetchCreditBalance();
-  }, [session, user]);
+  }, [user, supabase]);
 
-  const renderCreditBalance = () => {
-    if (isLoading) {
-      return <span className={`text-gray-500 ${className}`}>Loading...</span>;
-    }
-
-    if (error) {
-      return <span className={`text-red-500 ${className}`}>{error}</span>;
-    }
-
-    return (
-      <div className="flex items-center">
-        <span className={`${className}`}>
-          ${creditBalance?.toFixed(2) || "0.00"}
-        </span>
-        {showBuyButton && (
-          <Link
-            href="/credits"
-            className="ml-2 text-blue-500 hover:underline text-sm hidden md:inline-block"
-          >
-            Buy More
-          </Link>
-        )}
-      </div>
-    );
-  };
-
-  return renderCreditBalance();
+  return (
+    <div className="h-[24px] flex items-center">
+      {loading ? (
+        <div className="w-16 h-6 bg-white/20 animate-pulse rounded"></div>
+      ) : (
+        <p className="text-white text-lg font-medium">
+          ${creditBalance !== null ? creditBalance.toFixed(2) : '0.00'}
+        </p>
+      )}
+    </div>
+  );
 }

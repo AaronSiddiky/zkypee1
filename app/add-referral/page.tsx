@@ -107,25 +107,36 @@ export default function AddReferralPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-xl shadow-md p-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-          Add Referral Code
-        </h1>
+    <div className="min-h-screen bg-gradient-to-br from-[#00AFF0] to-[#0078D4] flex flex-col items-center justify-center p-4">
+      {/* Decorative circles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-1/4 -right-1/4 w-1/2 h-1/2 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-1/4 -left-1/4 w-1/2 h-1/2 bg-white/10 rounded-full blur-3xl" />
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="w-full max-w-md bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 relative z-10">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Add Referral Code
+          </h1>
+          <p className="text-white/80">
+            Enter a friend's referral code to get started
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label htmlFor="referralCode" className="block text-sm font-medium text-gray-700 mb-1">
-              Enter Referral Code
+            <label htmlFor="referralCode" className="block text-sm font-medium text-white/90 mb-2">
+              Referral Code
             </label>
             <input
               type="text"
               id="referralCode"
               value={referralCode}
               onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-transparent backdrop-blur-sm"
               maxLength={5}
-              placeholder="XXXXX"
+              placeholder="Enter 5-digit code"
               required
             />
           </div>
@@ -133,17 +144,29 @@ export default function AddReferralPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            className="w-full bg-white text-[#00AFF0] py-3 px-4 rounded-lg font-medium hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-[#00AFF0]"
           >
-            {isLoading ? 'Adding...' : 'Add Referral Code'}
+            {isLoading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-[#00AFF0]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Processing...
+              </span>
+            ) : (
+              'Add Referral Code'
+            )}
           </button>
 
           {message && (
-            <p className={`text-sm text-center ${
-              message.includes('successfully') ? 'text-green-600' : 'text-red-600'
+            <div className={`p-4 rounded-lg ${
+              message.includes('successfully') 
+                ? 'bg-green-500/20 text-white border border-green-500/30' 
+                : 'bg-red-500/20 text-white border border-red-500/30'
             }`}>
-              {message}
-            </p>
+              <p className="text-sm text-center">{message}</p>
+            </div>
           )}
         </form>
       </div>
